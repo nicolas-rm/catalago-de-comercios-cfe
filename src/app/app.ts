@@ -32,6 +32,12 @@ interface LoadingState {
     error?: string;
 }
 
+interface BrandCategory {
+    title: string;
+    brands: string[];
+    icon: string;
+}
+
 @Component({
     selector: 'app-root',
     imports: [],
@@ -64,8 +70,15 @@ export class App implements OnInit {
     protected readonly currentPage = signal(0);
     protected readonly hasMoreItems = signal(true);
     
-    // ViewChild para acceder al contenedor de tops
+    // Signal para el botón de scroll to top
+    protected readonly showScrollToTop = signal(false);
+    
+    // Signal para el estado de expansión de marcas
+    protected readonly brandsExpanded = signal(false);
+    
+    // ViewChild para acceder al contenedor de tops y marcas
     @ViewChild('topsContainer') topsContainer?: ElementRef<HTMLElement>;
+    @ViewChild('brandsContainer') brandsContainer?: ElementRef<HTMLElement>;
 
     // Computed signals para datos derivados
     protected readonly estados = computed(() => {
@@ -92,6 +105,88 @@ export class App implements OnInit {
     protected readonly loadingError = computed(() => this.loadingState().error);
 
     protected readonly currentYear = computed(() => new Date().getFullYear());
+
+    // Marcas de calzado organizadas por categorías
+    protected readonly brandCategories = signal<BrandCategory[]>([
+        {
+            title: 'Botas / Piel Premium',
+            icon: '🥾',
+            brands: ['BUCKHOUSE', 'CUADRA', 'TIMBERLAND']
+        },
+        {
+            title: 'Calzado (Marcas)',
+            icon: '👞',
+            brands: [
+                'ALDO', 'ALEJANDRA', 'AMARA', 'ARANTZA', 'BRANTANO', 'CANDY',
+                'COQUETA', 'DIONE', 'DOMIT', 'FLEXI',
+                'GOSH', 'INCOGNITA', 'JEANNE', 'JESSICA', 'JIMENA',
+                'JOYA', 'KARELE', 'KELDER', 'MARCELA',
+                'MICHEL', 'MUZZA', 'NINE WEST', 'PARUNO', 'RIBERA', 'ROCKPORT', 'STYLO',
+                'VAZZA', 'VEROCHI', 'VIA UNO', 'ZOE'
+            ]
+        },
+        {
+            title: 'Catálogo / Mayorista',
+            icon: '📦',
+            brands: ['ANDREA', 'CKLASS', 'IMPULS', 'MUNDO TERRA', 'PAKAR', 'PRICE SHOES']
+        },
+        {
+            title: 'Deportivo (Marcas)',
+            icon: '👟',
+            brands: [
+                'CHARLY', 'CONVERSE', 'CROCS', 'NIKE',
+                'PANAM', 'PIRMA', 'PUMA', 'SKECHERS', 'VANS'
+            ]
+        },
+        {
+            title: 'Industrial / Seguridad',
+            icon: '🦺',
+            brands: ['BERRENDO', 'CATERPILLAR', 'DESTROYER']
+        },
+        {
+            title: 'Moda / Fast Fashion',
+            icon: '👕',
+            brands: [
+                'BERSHKA', 'GUESS', 'H&M', 'HUGO', 'LEE', 'LOB',
+                'MASSIMO DUTTI', 'OLD NAVY',
+                'STRADIVARIUS', 'ZARA'
+            ]
+        },
+        {
+            title: 'Retail Multimarca',
+            icon: '🏪',
+            brands: [
+                'CALZAPATO', 'DOROTHY GAYNOR', 'DPORTENIS',
+                'TAF', 'ZAPATERÍAS 3 HERMANOS'
+            ]
+        },
+        {
+            title: 'Departamental',
+            icon: '🏬',
+            brands: ['LIVERPOOL']
+        },
+        {
+            title: 'Variedad / Accesorios',
+            icon: '👜',
+            brands: ['BIRKENSTOCK']
+        }
+    ]);
+
+    // Todas las marcas en un array plano para búsquedas
+    protected readonly allBrands = computed(() => {
+        return this.brandCategories().flatMap(category => category.brands);
+    });
+
+    // Marcas destacadas para la vista compacta (primeras de cada categoría)
+    protected readonly getFeaturedBrands = computed(() => {
+        const featured: string[] = [];
+        this.brandCategories().forEach(category => {
+            // Tomar las primeras 2-3 marcas de cada categoría
+            const limit = category.brands.length >= 3 ? 3 : category.brands.length;
+            featured.push(...category.brands.slice(0, limit));
+        });
+        return featured.slice(0, 20); // Limitar a 20 marcas destacadas
+    });
 
     constructor(private http: HttpClient) {
         // Effect para debug
@@ -205,6 +300,39 @@ export class App implements OnInit {
                 behavior: 'smooth'
             });
         }
+    }
+
+    protected scrollToTop(): void {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    }
+
+    protected toggleBrandsExpanded(): void {
+        this.brandsExpanded.update(current => !current);
+    }
+
+    protected scrollBrands(direction: number): void {
+        const container = this.brandsContainer?.nativeElement;
+        if (container) {
+            container.scrollBy({
+                left: direction * 300,
+                behavior: 'smooth'
+            });
+        }
+    }
+
+    protected searchByBrand(brand: string): void {
+        // Actualizar el valor del input de búsqueda
+        const searchInput = document.querySelector('#search') as HTMLInputElement;
+        if (searchInput) {
+            searchInput.value = brand;
+            searchInput.focus();
+        }
+        
+        // Actualizar el estado del filtro
+        this.updateFilterState({ q: brand });
     }
 
     // Métodos privados optimizados
@@ -347,7 +475,7 @@ export class App implements OnInit {
     }
 
     private setupInfiniteScroll(): void {
-        // Detectar scroll para cargar más elementos
+        // Detectar scroll para cargar más elementos y mostrar/ocultar botón
         fromEvent(window, 'scroll')
             .pipe(
                 debounceTime(100),
@@ -358,6 +486,9 @@ export class App implements OnInit {
                 const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
                 const windowHeight = window.innerHeight;
                 const documentHeight = document.documentElement.scrollHeight;
+
+                // Mostrar botón cuando el scroll esté arriba de 300px
+                this.showScrollToTop.set(scrollTop > 300);
 
                 // Cargar más cuando estemos cerca del final (80% del scroll)
                 if (scrollTop + windowHeight >= documentHeight * 0.8) {

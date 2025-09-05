@@ -4,11 +4,9 @@
         <div class="flex items-center justify-between py-4 gap-4">
             <div class="flex items-center gap-3">
                 <!-- Logo placeholder -->
-                <div class="h-10 w-10 rounded-lg bg-green-700/10 grid place-items-center">
-                    <svg viewBox="0 0 24 24" class="h-6 w-6 text-green-700" fill="currentColor" aria-hidden="true">
-                        <path d="M12 2a10 10 0 100 20 10 10 0 000-20ZM7 13h4l-1 5 7-7h-4l1-5-7 7Z" />
-                    </svg>
-                </div>
+                <!-- <div class="h-10 w-10 rounded-lg bg-green-700/10 grid place-items-center">
+                </div> -->
+                <img src="image.png" alt="Logo CFE" class="h-32 w-32 text-green-700 p-0 m-0 -my-8" aria-hidden="true">
                 <div>
                     <p class="text-sm font-medium text-green-700">Comisión Federal de Electricidad</p>
                     <h1 class="text-lg font-semibold leading-tight">Catálogo de comercios</h1>
@@ -37,11 +35,7 @@
                 <!-- Search -->
                 <label class="lg:col-span-6 col-span-12 relative block w-full">
                     <span class="sr-only">Buscar</span>
-                    <input 
-                        id="search"
-                        #searchInput 
-                        type="text" 
-                        placeholder="Buscar por nombre, dirección, ciudad…"
+                    <input id="search" #searchInput type="text" placeholder="Buscar por nombre, dirección, ciudad…"
                         [value]="filterState().q"
                         class="w-full rounded-xl border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-green-700/40" />
                     <svg viewBox="0 0 24 24" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"
@@ -78,7 +72,7 @@
                     <span class="font-medium">{{ displayedComercios().length }}</span>
                     <span class="text-gray-600">resultados mostrados</span>
                     @if (hasMoreItems()) {
-                        <span class="text-gray-500">de muchos más</span>
+                    <span class="text-gray-500">de muchos más</span>
                     }
                 </div>
                 <div class="flex items-center gap-2">
@@ -102,53 +96,89 @@
 </header>
 
 <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-8">
-    <!-- Banners Comercios TOP -->
-    <section aria-labelledby="tops-title" class="space-y-3">
+    <!-- Marcas de Calzado Principales -->
+    <section aria-labelledby="brands-title" class="space-y-4">
         <div class="flex items-center justify-between">
-            <h2 id="tops-title" class="text-base font-semibold">Comercios principales</h2>
-            <div class="text-sm text-gray-600">Desliza para ver más</div>
+            <h2 id="brands-title" class="text-base font-semibold">Comercios principales</h2>
+            <button type="button"
+                class="inline-flex items-center gap-2 text-sm font-medium text-green-700 hover:text-green-800 transition-colors"
+                (click)="toggleBrandsExpanded()">
+                <span>{{ brandsExpanded() ? 'Ver menos' : 'Ver todas (' + allBrands().length + ')' }}</span>
+                <svg viewBox="0 0 24 24" class="h-4 w-4 transition-transform duration-200"
+                    [class.rotate-180]="brandsExpanded()" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="m6 9 6 6 6-6" />
+                </svg>
+            </button>
         </div>
+
+        <!-- Vista compacta (scroll horizontal) -->
+        @if (!brandsExpanded()) {
         <div class="relative">
-            <div #topsContainer class="flex gap-4 overflow-x-auto scrollbar-none scroll-smooth snap-x snap-mandatory">
-                @for (comercio of topComercios(); track comercio.id) {
+            <div #brandsContainer
+                class="flex gap-3 overflow-x-auto scrollbar-none scroll-smooth snap-x snap-mandatory pb-2">
+                @for (brand of getFeaturedBrands(); track brand) {
                 <button type="button"
-                    class="snap-start shrink-0 w-[280px] md:w-[340px] rounded-2xl bg-white border border-gray-200 shadow-sm hover:shadow-md transition text-left"
-                    (click)="verEnMapa(comercio)">
-                    <div class="p-4 flex items-center gap-3">
-                        <div class="h-12 w-12 rounded-xl bg-green-700/10 grid place-items-center">
-                            <svg viewBox="0 0 24 24" class="h-6 w-6 text-green-700" fill="currentColor">
-                                <path d="M12 2a10 10 0 100 20 10 10 0 000-20ZM7 13h4l-1 5 7-7h-4l1-5-7 7Z" />
-                            </svg>
-                        </div>
-                        <div class="min-w-0">
-                            <p class="text-sm font-semibold truncate">{{ getNombreComercio(comercio) }}</p>
-                            <p class="text-xs text-gray-600 truncate">{{ getUbicacionTexto(comercio) }}</p>
-                        </div>
-                        <div
-                            class="ml-auto text-xs inline-flex items-center gap-1 rounded-lg bg-green-700/10 text-green-700 px-2 py-1">
-                            TOP</div>
-                    </div>
+                    class="snap-start shrink-0 px-4 py-2.5 rounded-xl bg-white border border-gray-200 shadow-sm hover:shadow-md hover:border-green-300 transition text-left whitespace-nowrap"
+                    (click)="searchByBrand(brand)">
+                    <span class="text-sm font-medium text-gray-900">{{ brand }}</span>
                 </button>
                 }
             </div>
-            <!-- Controles -->
+            <!-- Controles de scroll -->
             <div class="pointer-events-none absolute inset-y-0 left-0 right-0 flex items-center justify-between">
                 <button type="button"
-                    class="pointer-events-auto hidden sm:flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow hover:bg-white"
-                    aria-label="Anterior" (click)="scrollTops(-1)">
-                    <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
+                    class="pointer-events-auto hidden sm:flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow hover:bg-white"
+                    aria-label="Anterior" (click)="scrollBrands(-1)">
+                    <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="m15 18-6-6 6-6" />
                     </svg>
                 </button>
                 <button type="button"
-                    class="pointer-events-auto hidden sm:flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow hover:bg-white"
-                    aria-label="Siguiente" (click)="scrollTops(1)">
-                    <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
+                    class="pointer-events-auto hidden sm:flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow hover:bg-white"
+                    aria-label="Siguiente" (click)="scrollBrands(1)">
+                    <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="m9 18 6-6-6-6" />
                     </svg>
                 </button>
             </div>
         </div>
+        }
+
+        <!-- Vista expandida (categorías organizadas) -->
+        @if (brandsExpanded()) {
+        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm">
+            <div class="p-6">
+                <div class="max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                    <div class="space-y-6">
+                        @for (category of brandCategories(); track category.title) {
+                        <div class="space-y-3">
+                            <!-- Título de categoría -->
+                            <div class="flex items-center gap-2 border-b border-gray-100 pb-2">
+                                <span class="text-lg">{{ category.icon }}</span>
+                                <h3 class="text-sm font-semibold text-gray-900">{{ category.title }}</h3>
+                                <span class="text-xs text-gray-500 ml-auto">({{ category.brands.length }})</span>
+                            </div>
+
+                            <!-- Marcas de la categoría -->
+                            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                                @for (brand of category.brands; track brand) {
+                                <button type="button"
+                                    class="px-3 py-2 rounded-lg bg-gray-50 hover:bg-green-50 hover:border-green-200 border border-gray-200 transition text-left"
+                                    (click)="searchByBrand(brand)">
+                                    <span class="text-sm font-medium text-gray-900">{{ brand }}</span>
+                                </button>
+                                }
+                            </div>
+                        </div>
+                        }
+                    </div>
+                </div>
+                <div class="mt-4 text-xs text-gray-500 text-center border-t border-gray-100 pt-3">
+                    Haz clic en cualquier marca para buscarla en el catálogo • Total: {{ allBrands().length }} marcas
+                </div>
+            </div>
+        </div>
+        }
     </section>
 
     <!-- Resultados -->
@@ -159,13 +189,16 @@
         @if (loading()) {
         <div class="flex items-center justify-center py-12">
             <div class="text-center max-w-md mx-auto">
-                <div class="h-8 w-8 animate-spin rounded-full border-2 border-green-700/20 border-t-green-700 mx-auto mb-3"></div>
+                <div
+                    class="h-8 w-8 animate-spin rounded-full border-2 border-green-700/20 border-t-green-700 mx-auto mb-3">
+                </div>
                 <p class="text-gray-600 mb-2">{{ loadingMessage() }}</p>
                 @if (loadingProgress() > 0) {
-                    <div class="w-full bg-gray-200 rounded-full h-2 mb-2">
-                        <div class="bg-green-700 h-2 rounded-full transition-all duration-300" [style.width.%]="loadingProgress()"></div>
-                    </div>
-                    <p class="text-sm text-gray-500">{{ loadingProgress() }}%</p>
+                <div class="w-full bg-gray-200 rounded-full h-2 mb-2">
+                    <div class="bg-green-700 h-2 rounded-full transition-all duration-300"
+                        [style.width.%]="loadingProgress()"></div>
+                </div>
+                <p class="text-sm text-gray-500">{{ loadingProgress() }}%</p>
                 }
             </div>
         </div>
@@ -174,7 +207,7 @@
         @if (loadingError()) {
         <div class="rounded-xl border border-red-200 bg-red-50 p-8 text-center">
             <p class="text-red-700 font-medium">{{ loadingError() }}</p>
-            <button 
+            <button
                 class="mt-4 inline-flex items-center gap-2 rounded-lg bg-red-600 text-white px-4 py-2 text-sm font-semibold hover:bg-red-700"
                 (click)="cargarComercios()">
                 Reintentar
@@ -255,7 +288,8 @@
                             }
                         </div>
                         <div class="mt-4 flex items-center gap-2">
-                            <button class="inline-flex items-center gap-1 text-sm font-medium text-green-700 hover:underline"
+                            <button
+                                class="inline-flex items-center gap-1 text-sm font-medium text-green-700 hover:underline"
                                 (click)="verEnMapa(comercio)">
                                 Ver en mapa
                                 <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor"
@@ -270,19 +304,19 @@
             </article>
             }
         </div>
-        
+
         <!-- Botón cargar más -->
         @if (hasMoreItems() && !loading()) {
-            <div class="flex justify-center mt-8">
-                <button 
-                    class="inline-flex items-center gap-2 rounded-lg bg-green-700 text-white px-6 py-3 text-sm font-semibold hover:bg-green-800 transition-colors"
-                    (click)="loadMoreItems()">
-                    <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 5v14M5 12l7 7 7-7"/>
-                    </svg>
-                    Cargar más comercios
-                </button>
-            </div>
+        <div class="flex justify-center mt-8">
+            <button
+                class="inline-flex items-center gap-2 rounded-lg bg-green-700 text-white px-6 py-3 text-sm font-semibold hover:bg-green-800 transition-colors"
+                (click)="loadMoreItems()">
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14M5 12l7 7 7-7" />
+                </svg>
+                Cargar más comercios
+            </button>
+        </div>
         }
         }
 
@@ -294,6 +328,17 @@
         }
     </section>
 </main>
+
+<!-- Botón scroll to top -->
+<button type="button"
+    class="fixed bottom-6 right-6 z-50 h-12 w-12 rounded-full bg-green-700 text-white shadow-lg hover:bg-green-800 transition-all duration-300 flex items-center justify-center"
+    [class.opacity-0]="!showScrollToTop()" [class.pointer-events-none]="!showScrollToTop()"
+    [class.opacity-100]="showScrollToTop()" [class.pointer-events-auto]="showScrollToTop()" (click)="scrollToTop()"
+    aria-label="Ir al inicio" title="Ir al inicio">
+    <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="m18 15-6-6-6 6" />
+    </svg>
+</button>
 
 <footer class="mt-10 border-t border-gray-200 bg-white">
     <div
