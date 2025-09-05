@@ -160,19 +160,14 @@ export class App implements OnInit {
             icon: '🏪',
             brands: [
                 'CALZAPATO', 'DOROTHY GAYNOR', 'DPORTENIS',
-                'TAF', 'ZAPATERÍAS 3 HERMANOS'
+                'TAF', '3 HERMANOS'
             ]
         },
         {
             title: 'Departamental',
             icon: '🏬',
-            brands: ['LIVERPOOL']
+            brands: ['LIVERPOOL', 'PALACIO DE HIERRO', 'SEARS', 'COPPEL']
         },
-        {
-            title: 'Variedad / Accesorios',
-            icon: '👜',
-            brands: ['BIRKENSTOCK']
-        }
     ]);
 
     // Todas las marcas en un array plano para búsquedas
