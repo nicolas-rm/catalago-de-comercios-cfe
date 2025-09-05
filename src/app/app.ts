@@ -1,5 +1,7 @@
-import { Component, signal, computed, ViewChild, ElementRef, OnInit, effect } from '@angular/core';
+import { Component, signal, computed, ViewChild, ElementRef, OnInit, effect, DestroyRef, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { debounceTime, distinctUntilChanged, fromEvent, startWith } from 'rxjs';
 
 // Interfaces para tipos de datos
 interface Comercio {
@@ -23,6 +25,13 @@ interface FilterState {
     sort: 'top' | 'az' | 'estado';
 }
 
+interface LoadingState {
+    isLoading: boolean;
+    progress: number;
+    message: string;
+    error?: string;
+}
+
 @Component({
     selector: 'app-root',
     imports: [],
@@ -30,9 +39,18 @@ interface FilterState {
     styleUrl: './app.css'
 })
 export class App implements OnInit {
+    private readonly destroyRef = inject(DestroyRef);
+    
     // Señales para el estado reactivo
     protected readonly comercios = signal<Comercio[]>([]);
-    protected readonly loading = signal(true);
+    protected readonly displayedComercios = signal<Comercio[]>([]);
+    protected readonly loadingState = signal<LoadingState>({
+        isLoading: false,
+        progress: 0,
+        message: '',
+        error: undefined
+    });
+    
     protected readonly filterState = signal<FilterState>({
         q: '',
         estado: '',
@@ -40,6 +58,12 @@ export class App implements OnInit {
         sort: 'top'
     });
 
+    // Configuración de paginación virtual
+    private readonly ITEMS_PER_PAGE = 50;
+    private readonly CHUNK_SIZE = 1000; // Procesar en chunks de 1000 elementos
+    protected readonly currentPage = signal(0);
+    protected readonly hasMoreItems = signal(true);
+    
     // ViewChild para acceder al contenedor de tops
     @ViewChild('topsContainer') topsContainer?: ElementRef<HTMLElement>;
 
@@ -55,60 +79,17 @@ export class App implements OnInit {
     });
 
     protected readonly topComercios = computed(() => {
-        return this.comercios().filter(c => c.top);
+        return this.comercios().filter(c => c.top).slice(0, 10); // Limitar a 10 elementos
     });
 
     protected readonly filteredComercios = computed(() => {
-        const state = this.filterState();
-        let filtered = this.comercios();
-
-        // Aplicar filtros
-        if (state.estado) {
-            filtered = filtered.filter(c => c.estado === state.estado);
-        }
-
-        if (state.municipio) {
-            filtered = filtered.filter(c =>
-                c.municipio.toLowerCase().includes(state.municipio.toLowerCase())
-            );
-        }
-
-        if (state.q) {
-            const query = this.normalize(state.q);
-            filtered = filtered.filter(c => {
-                const searchText = this.normalize([
-                    c.razon_social,
-                    c.marca_tienda,
-                    c.tienda_ubicacion,
-                    c.ubicacion,
-                    c.colonia,
-                    c.municipio,
-                    c.estado,
-                    c.rfc
-                ].filter(Boolean).join(' '));
-                return searchText.includes(query);
-            });
-        }
-
-        // Aplicar ordenamiento
-        switch (state.sort) {
-            case 'az':
-                filtered.sort((a, b) =>
-                    this.getNombreComercio(a).localeCompare(this.getNombreComercio(b))
-                );
-                break;
-            case 'estado':
-                filtered.sort((a, b) => a.estado.localeCompare(b.estado));
-                break;
-            default: // 'top'
-                filtered.sort((a, b) => {
-                    if (a.top !== b.top) return b.top ? 1 : -1;
-                    return this.getNombreComercio(a).localeCompare(this.getNombreComercio(b));
-                });
-        }
-
-        return filtered;
+        return this.displayedComercios();
     });
+
+    protected readonly loading = computed(() => this.loadingState().isLoading);
+    protected readonly loadingProgress = computed(() => this.loadingState().progress);
+    protected readonly loadingMessage = computed(() => this.loadingState().message);
+    protected readonly loadingError = computed(() => this.loadingState().error);
 
     protected readonly currentYear = computed(() => new Date().getFullYear());
 
@@ -116,12 +97,20 @@ export class App implements OnInit {
         // Effect para debug
         effect(() => {
             console.log('Comercios cargados:', this.comercios().length);
-            console.log('Comercios filtrados:', this.filteredComercios().length);
+            console.log('Comercios mostrados:', this.displayedComercios().length);
+        });
+
+        // Effect para aplicar filtros cuando cambia el estado
+        effect(() => {
+            const filterState = this.filterState();
+            this.applyFiltersAsync(filterState);
         });
     }
 
     async ngOnInit() {
         await this.cargarComercios();
+        this.setupInfiniteScroll();
+        this.setupSearchDebounce();
     }
 
     // Métodos públicos para el template
@@ -166,7 +155,14 @@ export class App implements OnInit {
 
     protected onSearchChange(event: Event): void {
         const target = event.target as HTMLInputElement;
+        // La búsqueda con debounce se maneja en setupSearchDebounce
+        // Este método se mantiene para compatibilidad
         this.updateFilterState({ q: target.value });
+    }
+
+    protected onSearchInput(event: Event): void {
+        // Método alternativo que podría usarse para debounce manual
+        this.onSearchChange(event);
     }
 
     protected onEstadoChange(event: Event): void {
@@ -191,9 +187,14 @@ export class App implements OnInit {
             municipio: '',
             sort: 'top'
         });
+        this.currentPage.set(0);
+    }
 
-        // Reset form values
-        this.resetFormInputs();
+    protected loadMoreItems(): void {
+        if (this.hasMoreItems() && !this.loading()) {
+            this.currentPage.update(page => page + 1);
+            this.applyFiltersAsync(this.filterState());
+        }
     }
 
     protected scrollTops(direction: number): void {
@@ -206,100 +207,197 @@ export class App implements OnInit {
         }
     }
 
-    // Métodos privados
-    private async cargarComercios(): Promise<void> {
+    // Métodos privados optimizados
+    protected async cargarComercios(): Promise<void> {
         try {
-            this.loading.set(true);
+            this.updateLoadingState({
+                isLoading: true,
+                progress: 0,
+                message: 'Iniciando carga de datos...'
+            });
 
-            // Simular carga de datos desde JSON
-            // En un caso real, aquí haríamos: this.http.get<Comercio[]>('./assets/comercios.json')
-            const mockData: Comercio[] = await this.getMockData();
+            // Cargar datos reales desde JSON
+            const response = await this.http.get<Comercio[]>('./comercios.json').toPromise();
+            const data = response || [];
+            
+            this.updateLoadingState({
+                isLoading: true,
+                progress: 50,
+                message: `Procesando ${data.length} comercios...`
+            });
 
-            this.comercios.set(mockData);
+            // Procesar en chunks para evitar congelar la UI
+            await this.processDataInChunks(data);
+            
+            this.updateLoadingState({
+                isLoading: true,
+                progress: 100,
+                message: 'Finalizando...'
+            });
+
+            // Aplicar filtros iniciales
+            await this.applyFiltersAsync(this.filterState());
+
         } catch (error) {
             console.error('Error cargando comercios:', error);
-            // Manejar error apropiadamente
+            this.updateLoadingState({
+                isLoading: false,
+                progress: 0,
+                message: '',
+                error: 'Error al cargar los datos. Por favor, intenta de nuevo.'
+            });
         } finally {
-            this.loading.set(false);
+            this.updateLoadingState({
+                isLoading: false,
+                progress: 100,
+                message: 'Datos cargados correctamente'
+            });
         }
     }
 
-    private async getMockData(): Promise<Comercio[]> {
-        // Datos de ejemplo para demostración
+    private async processDataInChunks(data: Comercio[]): Promise<void> {
+        const chunks = this.chunkArray(data, this.CHUNK_SIZE);
+        let processedData: Comercio[] = [];
+
+        for (let i = 0; i < chunks.length; i++) {
+            const chunk = chunks[i];
+            
+            // Procesar chunk en el siguiente tick para no bloquear UI
+            await new Promise(resolve => {
+                setTimeout(() => {
+                    processedData = [...processedData, ...chunk];
+                    
+                    const progress = ((i + 1) / chunks.length) * 50 + 50;
+                    this.updateLoadingState({
+                        isLoading: true,
+                        progress,
+                        message: `Procesando ${processedData.length} de ${data.length} comercios...`
+                    });
+                    
+                    resolve(void 0);
+                }, 0);
+            });
+        }
+
+        this.comercios.set(processedData);
+    }
+
+    private async applyFiltersAsync(state: FilterState): Promise<void> {
         return new Promise(resolve => {
             setTimeout(() => {
-                resolve([
-                    {
-                        id: '1',
-                        razon_social: 'Tienda CFE Principal',
-                        marca_tienda: 'CFE Servicios',
-                        ubicacion: 'Av. Reforma 123',
-                        colonia: 'Centro',
-                        municipio: 'Ciudad de México',
-                        estado: 'CDMX',
-                        cp: '06000',
-                        rfc: 'CFE123456789',
-                        top: true
-                    },
-                    {
-                        id: '2',
-                        razon_social: 'Comercial Eléctrica del Norte',
-                        marca_tienda: 'ElectroNorte',
-                        ubicacion: 'Calle Hidalgo 456',
-                        colonia: 'Norte',
-                        municipio: 'Monterrey',
-                        estado: 'Nuevo León',
-                        cp: '64000',
-                        rfc: 'CEN987654321',
-                        top: true
-                    },
-                    {
-                        id: '3',
-                        razon_social: 'Distribuidora Eléctrica Sur',
-                        marca_tienda: 'ElectroSur',
-                        ubicacion: 'Av. Juárez 789',
-                        colonia: 'Sur',
-                        municipio: 'Guadalajara',
-                        estado: 'Jalisco',
-                        cp: '44100',
-                        rfc: 'DES456789123'
-                    },
-                    {
-                        id: '4',
-                        razon_social: 'Materiales Eléctricos del Oeste',
-                        marca_tienda: 'MatElec',
-                        ubicacion: 'Blvd. Zapata 321',
-                        colonia: 'Oeste',
-                        municipio: 'Tijuana',
-                        estado: 'Baja California',
-                        cp: '22000',
-                        rfc: 'MEO789123456'
-                    },
-                    {
-                        id: '5',
-                        razon_social: 'CFE Sucursal Este',
-                        marca_tienda: 'CFE Este',
-                        ubicacion: 'Av. 5 de Mayo 654',
-                        colonia: 'Este',
-                        municipio: 'Puebla',
-                        estado: 'Puebla',
-                        cp: '72000',
-                        rfc: 'CSE321654987',
-                        top: true
-                    }
-                ]);
-            }, 1000); // Simular delay de carga
+                let filtered = this.comercios();
+
+                // Aplicar filtros
+                if (state.estado) {
+                    filtered = filtered.filter(c => c.estado === state.estado);
+                }
+
+                if (state.municipio) {
+                    filtered = filtered.filter(c =>
+                        c.municipio.toLowerCase().includes(state.municipio.toLowerCase())
+                    );
+                }
+
+                if (state.q) {
+                    const query = this.normalize(state.q);
+                    filtered = filtered.filter(c => {
+                        const searchText = this.normalize([
+                            c.razon_social,
+                            c.marca_tienda,
+                            c.tienda_ubicacion,
+                            c.ubicacion,
+                            c.colonia,
+                            c.municipio,
+                            c.estado,
+                            c.rfc
+                        ].filter(Boolean).join(' '));
+                        return searchText.includes(query);
+                    });
+                }
+
+                // Aplicar ordenamiento
+                switch (state.sort) {
+                    case 'az':
+                        filtered.sort((a, b) =>
+                            this.getNombreComercio(a).localeCompare(this.getNombreComercio(b))
+                        );
+                        break;
+                    case 'estado':
+                        filtered.sort((a, b) => a.estado.localeCompare(b.estado));
+                        break;
+                    default: // 'top'
+                        filtered.sort((a, b) => {
+                            if (a.top !== b.top) return b.top ? 1 : -1;
+                            return this.getNombreComercio(a).localeCompare(this.getNombreComercio(b));
+                        });
+                }
+
+                // Aplicar paginación
+                const currentPage = this.currentPage();
+                const startIndex = currentPage * this.ITEMS_PER_PAGE;
+                const endIndex = startIndex + this.ITEMS_PER_PAGE;
+                const paginatedResults = filtered.slice(0, endIndex);
+
+                this.displayedComercios.set(paginatedResults);
+                this.hasMoreItems.set(filtered.length > endIndex);
+
+                resolve();
+            }, 0);
         });
+    }
+
+    private setupInfiniteScroll(): void {
+        // Detectar scroll para cargar más elementos
+        fromEvent(window, 'scroll')
+            .pipe(
+                debounceTime(100),
+                distinctUntilChanged(),
+                takeUntilDestroyed(this.destroyRef)
+            )
+            .subscribe(() => {
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                const windowHeight = window.innerHeight;
+                const documentHeight = document.documentElement.scrollHeight;
+
+                // Cargar más cuando estemos cerca del final (80% del scroll)
+                if (scrollTop + windowHeight >= documentHeight * 0.8) {
+                    this.loadMoreItems();
+                }
+            });
+    }
+
+    private setupSearchDebounce(): void {
+        // Configurar debounce para la búsqueda
+        const searchInput = document.querySelector('#search') as HTMLInputElement;
+        if (searchInput) {
+            fromEvent(searchInput, 'input')
+                .pipe(
+                    debounceTime(300), // Esperar 300ms después del último input
+                    distinctUntilChanged(),
+                    takeUntilDestroyed(this.destroyRef)
+                )
+                .subscribe((event: any) => {
+                    const value = event.target.value;
+                    this.updateFilterState({ q: value });
+                });
+        }
+    }
+
+    private chunkArray<T>(array: T[], chunkSize: number): T[][] {
+        const chunks: T[][] = [];
+        for (let i = 0; i < array.length; i += chunkSize) {
+            chunks.push(array.slice(i, i + chunkSize));
+        }
+        return chunks;
+    }
+
+    private updateLoadingState(update: Partial<LoadingState>): void {
+        this.loadingState.update(current => ({ ...current, ...update }));
     }
 
     private updateFilterState(update: Partial<FilterState>): void {
         this.filterState.update(current => ({ ...current, ...update }));
-    }
-
-    private resetFormInputs(): void {
-        // Reset inputs using ViewChild references would be better, but for now use signals
-        // The filterState reset will trigger the UI to update via the signal binding
-        // We don't need to manually reset form values since Angular's signal binding handles it
+        this.currentPage.set(0); // Reset pagination when filters change
     }
 
     private normalize(text: string): string {
@@ -311,7 +409,7 @@ export class App implements OnInit {
 
     private generateCSV(): string {
         const headers = ['Razón Social', 'Marca/Tienda', 'Dirección', 'Colonia', 'Municipio', 'Estado', 'CP', 'RFC'];
-        const rows = this.filteredComercios().map(comercio => [
+        const rows = this.displayedComercios().map(comercio => [
             comercio.razon_social,
             comercio.marca_tienda || '',
             comercio.ubicacion,
