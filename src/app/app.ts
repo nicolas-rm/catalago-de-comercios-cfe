@@ -76,6 +76,9 @@ export class App implements OnInit {
     // Signal para el estado de expansión de marcas
     protected readonly brandsExpanded = signal(false);
     
+    // Signal para controlar la visibilidad del modal de alerta
+    protected readonly showLocationAlert = signal(true);
+    
     // ViewChild para acceder al contenedor de tops y marcas
     @ViewChild('topsContainer') topsContainer?: ElementRef<HTMLElement>;
     @ViewChild('brandsContainer') brandsContainer?: ElementRef<HTMLElement>;
@@ -333,6 +336,10 @@ export class App implements OnInit {
         
         // Actualizar el estado del filtro
         this.updateFilterState({ q: brand });
+    }
+
+    protected closeLocationAlert(): void {
+        this.showLocationAlert.set(false);
     }
 
     // Métodos privados optimizados

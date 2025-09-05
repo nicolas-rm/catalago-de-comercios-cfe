@@ -95,6 +95,56 @@
     </div>
 </header>
 
+<!-- Modal de Alerta sobre Ubicaciones -->
+@if (showLocationAlert()) {
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" 
+     (click)="closeLocationAlert()">
+    <div class="relative mx-4 w-full max-w-md transform rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-gray-900/5 transition-all"
+         (click)="$event.stopPropagation()">
+        <!-- Icono de advertencia -->
+        <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 mb-4">
+            <svg class="h-6 w-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+            </svg>
+        </div>
+        
+        <!-- Contenido del modal -->
+        <div class="text-center">
+            <h3 class="text-lg font-semibold text-gray-900 mb-3">
+                Aviso Importante
+            </h3>
+            <p class="text-sm text-gray-600 leading-relaxed mb-6">
+                Las <strong>ubicaciones visualizadas o generadas</strong> pueden llegar a variar. 
+                También los <strong>nombres visuales o representativos</strong> mostrados en este catálogo 
+                pueden diferir.
+            </p>
+            
+            <!-- Botón de cerrar -->
+            <button 
+                type="button"
+                class="w-full inline-flex justify-center items-center gap-2 rounded-lg bg-green-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700 transition-colors"
+                (click)="closeLocationAlert()">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                </svg>
+                Entendido
+            </button>
+        </div>
+        
+        <!-- Botón X en la esquina -->
+        <button 
+            type="button" 
+            class="absolute right-4 top-4 text-gray-400 hover:text-gray-600 transition-colors"
+            (click)="closeLocationAlert()"
+            aria-label="Cerrar alerta">
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+    </div>
+</div>
+}
+
 <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-8">
     <!-- Marcas de Calzado Principales -->
     <section aria-labelledby="brands-title" class="space-y-4">
