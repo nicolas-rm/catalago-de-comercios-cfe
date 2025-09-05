@@ -1,1 +1,23 @@
 /* You can add global styles to this file, and also import other style files */
+@import "tailwindcss";
+
+/* Importar fuente Inter desde Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* Estilos globales */
+html, body {
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, 'Helvetica Neue', Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Estilos para scrollbar personalizado */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

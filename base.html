@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="es" class="h-full">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CFE | Catálogo de Comercios</title>
+
+    <!-- TailwindCSS (CDN para demo). Si compilas Tailwind 4.1 en tu proyecto, elimina esto y usa tu build. -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Config de tonos CFE para usar como utilidades (vía CDN)
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cfe: {
+                            DEFAULT: '#006847',
+                            dark: '#05503a',
+                            light: '#18a05a',
+                            50: '#e6f5ed',
+                            100: '#c2e7d2',
+                            200: '#9bdab7',
+                            300: '#72cd9b',
+                            400: '#4cc081',
+                            500: '#2ab56c',
+                            600: '#18a05a',
+                            700: '#0f7f49',
+                            800: '#09603a',
+                            900: '#064b31'
+                        }
+                    },
+                    boxShadow: {
+                        soft: '0 1px 2px rgba(0,0,0,.05), 0 6px 16px rgba(0,0,0,.06)'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <script src="
+https://cdn.jsdelivr.net/npm/simplebar@6.3.2/dist/simplebar.min.js
+"></script>
+    <link href="
+https://cdn.jsdelivr.net/npm/simplebar@6.3.2/dist/simplebar.min.css
+" rel="stylesheet">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        html,
+        body {
+            font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, 'Helvetica Neue', Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        }
+
+        .scrollbar-none::-webkit-scrollbar {
+            display: none;
+        }
+
+        .scrollbar-none {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+
+<body class="min-h-full bg-gray-50 text-gray-900">
+    <!-- Header / Brand -->
+    <header class="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between py-4 gap-4">
+                <div class="flex items-center gap-3">
+                    <!-- Logo placeholder -->
+                    <div class="h-10 w-10 rounded-lg bg-cfe/10 grid place-items-center">
+                        <svg viewBox="0 0 24 24" class="h-6 w-6 text-cfe" fill="currentColor" aria-hidden="true">
+                            <path d="M12 2a10 10 0 100 20 10 10 0 000-20ZM7 13h4l-1 5 7-7h-4l1-5-7 7Z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-cfe">Comisión Federal de Electricidad</p>
+                        <h1 class="text-lg font-semibold leading-tight">Catálogo de comercios</h1>
+                    </div>
+                </div>
+
+                <!-- CTA / Ayuda -->
+                <div class="hidden sm:flex items-center gap-3">
+                    <a href="#"
+                        class="inline-flex items-center gap-2 rounded-lg bg-cfe text-white px-3 py-2 text-sm font-semibold shadow-soft hover:bg-cfe/90">
+                        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <path d="M7 10l5-5 5 5" />
+                        </svg>
+                        Descargar listado (CSV)
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search & Quick Filters -->
+        <div class="border-t border-gray-200 bg-white/70">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-3">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 w-full">
+                    <!-- Search -->
+                    <label class="lg:col-span-6 col-span-12 relative block w-full">
+                        <span class="sr-only">Buscar</span>
+                        <input id="search" type="text" placeholder="Buscar por nombre, dirección, ciudad…"
+                            class="w-full rounded-xl border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-sm shadow-soft outline-none focus:ring-2 focus:ring-cfe/40" />
+                        <svg viewBox="0 0 24 24" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="7" />
+                            <path d="m20 20-3.5-3.5" />
+                        </svg>
+                    </label>
+                    <!-- Estado -->
+                    <div class="lg:col-span-3 col-span-12 w-full">
+                        <select id="filter-estado"
+                            class="w-full rounded-xl border border-gray-300 bg-white py-2.5 px-3 text-sm shadow-soft focus:ring-2 focus:ring-cfe/40">
+                            <option value="">Todos los estados</option>
+                        </select>
+                    </div>
+                    <!-- Municipio -->
+                    <div class="lg:col-span-3 col-span-12 w-full">
+                        <select id="filter-categoria"
+                            class="w-full rounded-xl border border-gray-300 bg-white py-2.5 px-3 text-sm shadow-soft focus:ring-2 focus:ring-cfe/40">
+                            <option value="">Todos los municipios</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center justify-between text-sm">
+                    <div class="flex items-center gap-2">
+                        <span id="count" class="font-medium">0</span>
+                        <span class="text-gray-600">resultados</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-gray-600">Ordenar:</label>
+                        <select id="sort"
+                            class="rounded-lg border border-gray-300 bg-white py-2 px-2 text-sm shadow-soft focus:ring-2 focus:ring-cfe/40">
+                            <option value="top">Destacados</option>
+                            <option value="az">A–Z</option>
+                            <option value="estado">Por estado</option>
+                        </select>
+                        <button id="reset"
+                            class="ml-2 rounded-lg border border-gray-300 bg-white py-2 px-3 text-sm shadow-soft hover:bg-gray-50">Limpiar
+                            filtros</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+        <!-- Banners Comercios TOP -->
+        <section aria-labelledby="tops-title" class="space-y-3">
+            <div class="flex items-center justify-between">
+                <h2 id="tops-title" class="text-base font-semibold">Comercios principales</h2>
+                <div class="text-sm text-gray-600">Desliza para ver más</div>
+            </div>
+            <div id="tops" class="relative">
+                <div class="flex gap-4 overflow-x-auto scrollbar-none scroll-smooth snap-x snap-mandatory"
+                    id="tops-row">
+                    <!-- JS inyecta banners aquí -->
+                </div>
+                <!-- Controles -->
+                <div class="pointer-events-none absolute inset-y-0 left-0 right-0 flex items-center justify-between">
+                    <button type="button" data-dir="-1"
+                        class="pointer-events-auto hidden sm:flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow hover:bg-white"
+                        aria-label="Anterior" id="tops-prev">
+                        <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="m15 18-6-6 6-6" />
+                        </svg>
+                    </button>
+                    <button type="button" data-dir="1"
+                        class="pointer-events-auto hidden sm:flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow hover:bg-white"
+                        aria-label="Siguiente" id="tops-next">
+                        <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="m9 18 6-6-6-6" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Resultados -->
+        <section aria-labelledby="results-title" class="space-y-4">
+            <h2 id="results-title" class="sr-only">Resultados</h2>
+
+            <!-- Estado de carga -->
+            <div id="loading" class="flex items-center justify-center py-12">
+                <div class="text-center">
+                    <div class="h-8 w-8 animate-spin rounded-full border-2 border-cfe/20 border-t-cfe mx-auto mb-3">
+                    </div>
+                    <p class="text-gray-600">Cargando comercios...</p>
+                </div>
+            </div>
+
+            <div id="results" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 hidden">
+                <!-- JS inyecta tarjetas aquí -->
+            </div>
+            <div id="empty" class="hidden rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center">
+                <p class="text-gray-700 font-medium">No encontramos comercios con esos filtros.</p>
+                <p class="text-gray-500 text-sm mt-1">Prueba con otro término o limpia los filtros.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="mt-10 border-t border-gray-200 bg-white">
+        <div
+            class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 text-sm text-gray-600 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p>&copy; <span id="year"></span> CFE | SET — Catálogo de comercios.</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- Variable global para los datos ---
+        let COMERCIOS = [];
+
+        // --- Función para cargar datos desde JSON ---
+        async function cargarComerciosDesdeJSON() {
+            try {
+                const response = await fetch('./comercios.json');
+                if (!response.ok) {
+                    throw new Error(`Error al cargar comercios.json: ${response.status}`);
+                }
+                const data = await response.json();
+                COMERCIOS = data;
+
+                // Inicializar la aplicación una vez cargados los datos
+                inicializarApp();
+            } catch (error) {
+                console.error('Error cargando los datos de comercios:', error);
+                // Mostrar mensaje de error al usuario
+                document.body.innerHTML = `
+          <div class="min-h-screen flex items-center justify-center bg-gray-50">
+            <div class="text-center">
+              <h1 class="text-2xl font-bold text-gray-900 mb-2">Error al cargar datos</h1>
+              <p class="text-gray-600">No se pudieron cargar los datos de comercios.</p>
+              <p class="text-sm text-gray-500 mt-2">Verifica que el archivo comercios.json esté disponible.</p>
+            </div>
+          </div>
+        `;
+            }
+        }
+
+        // --- Función para inicializar la aplicación ---
+        function inicializarApp() {
+            // Ocultar estado de carga y mostrar contenido
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+            if (loading) loading.classList.add('hidden');
+            if (results) results.classList.remove('hidden');
+
+            populateFilterOptions();
+            renderTops(COMERCIOS);
+            wireUI();
+            applyFilters();
+        }
+
+        // --- Utilidades ---
+        const $ = (sel, ctx = document) => ctx.querySelector(sel);
+        const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
+
+        const normalize = (s) => (s || '').toString().normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+
+        function uniqueSorted(arr, key) {
+            return [...new Set(arr.map(o => (key ? o[key] : o)))].filter(Boolean).sort((a, b) => a.localeCompare(b));
+        }
+
+        // Función para abrir Google Maps
+        function verEnMapa(nombre, direccion, ubicacion) {
+            const query = encodeURIComponent(`${nombre} ${direccion} ${ubicacion}`);
+            const url = `https://www.google.com/maps/search/?api=1&query=${query}`;
+            window.open(url, '_blank');
+        }
+
+        // --- Render de Banners TOP ---
+        function renderTops(data) {
+            const row = $('#tops-row');
+            row.innerHTML = '';
+            data.filter(x => x.top).forEach(item => {
+                const nombreComercio = item.marca_tienda || item.razon_social;
+                const ubicacionTexto = `${item.municipio}, ${item.estado}`;
+
+                const card = document.createElement('button');
+                card.type = 'button';
+                card.className = 'snap-start shrink-0 w-[280px] md:w-[340px] rounded-2xl bg-white border border-gray-200 shadow-soft hover:shadow transition text-left';
+                card.onclick = () => verEnMapa(nombreComercio, item.ubicacion, ubicacionTexto);
+                card.innerHTML = `
+          <div class="p-4 flex items-center gap-3">
+            <div class="h-12 w-12 rounded-xl bg-cfe/10 grid place-items-center">
+              <svg viewBox="0 0 24 24" class="h-6 w-6 text-cfe" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20ZM7 13h4l-1 5 7-7h-4l1-5-7 7Z"/></svg>
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm font-semibold truncate">${nombreComercio}</p>
+              <p class="text-xs text-gray-600 truncate">${ubicacionTexto}</p>
+            </div>
+            <div class="ml-auto text-xs inline-flex items-center gap-1 rounded-lg bg-cfe/10 text-cfe px-2 py-1">TOP</div>
+          </div>`;
+                row.appendChild(card);
+            });
+        }
+
+        // --- Render de Tarjetas ---
+        function cardTemplate(item) {
+            const nombreComercio = item.marca_tienda || item.razon_social;
+            const direccionCompleta = `${item.ubicacion}${item.colonia ? ', ' + item.colonia : ''}`;
+            const ubicacionCompleta = `${item.municipio}, ${item.estado}`;
+            const cpTexto = item.cp ? `CP ${item.cp}` : '';
+
+            return `
+        <article class="group rounded-2xl bg-white border border-gray-200 shadow-soft hover:shadow-md transition overflow-hidden">
+          <div class="p-4 flex items-start gap-3">
+            <div class="h-12 w-12 rounded-xl bg-cfe/10 grid place-items-center shrink-0">
+              <svg viewBox="0 0 24 24" class="h-6 w-6 text-cfe" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20ZM7 13h4l-1 5 7-7h-4l1-5-7 7Z"/></svg>
+            </div>
+            <div class="min-w-0 grow">
+              <div class="flex items-start justify-between gap-2">
+                <h3 class="text-sm font-semibold leading-snug pr-6">${nombreComercio}</h3>
+                ${item.top ? '<span class="rounded-md bg-cfe/10 text-cfe text-[11px] font-medium px-2 py-0.5">Destacado</span>' : ''}
+              </div>
+              ${item.razon_social !== nombreComercio ? `<p class="mt-0.5 text-xs text-gray-600">${item.razon_social}</p>` : ''}
+              <div class="mt-3 space-y-1.5 text-sm">
+                <p class="flex items-start gap-2">
+                  <svg viewBox="0 0 24 24" class="h-4 w-4 text-gray-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2C8 2 5 5 5 9c0 7 7 13 7 13s7-6 7-13c0-4-3-7-7-7Zm0 9a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z"/>
+                  </svg>
+                  <span class="text-xs leading-relaxed">${direccionCompleta}</span>
+                </p>
+                <p class="flex items-center gap-2">
+                  <svg viewBox="0 0 24 24" class="h-4 w-4 text-gray-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 5h18M7 5v14m10-14v14M3 19h18"/>
+                  </svg>
+                  <span class="text-xs">${ubicacionCompleta}</span>
+                </p>
+                ${cpTexto ? `<p class="flex items-center gap-2">
+                  <svg viewBox="0 0 24 24" class="h-4 w-4 text-gray-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                    <circle cx="12" cy="10" r="3"/>
+                  </svg>
+                  <span class="text-xs font-medium text-gray-700">${cpTexto}</span>
+                </p>` : ''}
+                ${item.rfc ? `<p class="flex items-center gap-2">
+                  <svg viewBox="0 0 24 24" class="h-4 w-4 text-gray-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14,2 14,8 20,8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10,9 9,9 8,9"/>
+                  </svg>
+                  <span class="text-xs font-mono">${item.rfc}</span>
+                </p>` : ''}
+                ${item.tienda_ubicacion ? `<p class="flex items-center gap-2">
+                  <svg viewBox="0 0 24 24" class="h-4 w-4 text-gray-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                  </svg>
+                  <span class="text-xs text-gray-600">${item.tienda_ubicacion}</span>
+                </p>` : ''}
+              </div>
+              <div class="mt-4 flex items-center gap-2">
+                <button class="inline-flex items-center gap-1 text-sm font-medium text-cfe hover:underline" onclick="verEnMapa('${nombreComercio}', '${direccionCompleta}', '${ubicacionCompleta}')">
+                  Ver en mapa
+                  <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </article>
+      `;
+        }
+
+        // --- Estado, Categoría y Filtros ---
+        const state = {
+            q: '',
+            estado: '',
+            municipio: '',
+            abierto: false,
+            sort: 'top'
+        };
+
+        function applyFilters() {
+            const qn = normalize(state.q);
+            let arr = COMERCIOS.filter(item => {
+                if (state.estado && item.estado !== state.estado) return false;
+                if (state.municipio && !item.municipio.toLowerCase().includes(state.municipio.toLowerCase())) return false;
+                if (!qn) return true;
+                const blob = normalize([
+                    item.razon_social,
+                    item.marca_tienda,
+                    item.tienda_ubicacion,
+                    item.ubicacion,
+                    item.colonia,
+                    item.municipio,
+                    item.estado,
+                    item.rfc
+                ].filter(Boolean).join(' '));
+                return blob.includes(qn);
+            });
+
+            switch (state.sort) {
+                case 'az':
+                    arr.sort((a, b) => (a.marca_tienda || a.razon_social).localeCompare(b.marca_tienda || b.razon_social));
+                    break;
+                case 'estado':
+                    arr.sort((a, b) => a.estado.localeCompare(b.estado));
+                    break;
+                default: // 'top'
+                    arr.sort((a, b) => {
+                        if (a.top !== b.top) return b.top ? 1 : -1;
+                        return (a.marca_tienda || a.razon_social).localeCompare(b.marca_tienda || b.razon_social);
+                    });
+            }
+
+            renderResults(arr);
+        }
+
+        function renderResults(list) {
+            const grid = $('#results');
+            const empty = $('#empty');
+            $('#count').textContent = list.length;
+            grid.innerHTML = '';
+            if (!list.length) {
+                empty.classList.remove('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+            const frag = document.createDocumentFragment();
+            list.forEach(item => {
+                const wrap = document.createElement('div');
+                wrap.innerHTML = cardTemplate(item);
+                frag.appendChild(wrap.firstElementChild);
+            });
+            grid.appendChild(frag);
+        }
+
+        function populateFilterOptions() {
+            const estados = uniqueSorted(COMERCIOS.map(x => x.estado));
+            const municipios = uniqueSorted(COMERCIOS.map(x => x.municipio));
+            const estSel = $('#filter-estado');
+            const munSel = $('#filter-categoria'); // Reutilizamos este select para municipios
+
+            // Cambiar el label del select de categoría a municipio
+            estSel.parentElement.nextElementSibling.querySelector('select').previousElementSibling = null;
+
+            estados.forEach(e => {
+                const opt = document.createElement('option');
+                opt.value = e;
+                opt.textContent = e;
+                estSel.appendChild(opt);
+            });
+
+            // Limpiar opciones anteriores y agregar placeholder
+            munSel.innerHTML = '<option value="">Todos los municipios</option>';
+            municipios.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m;
+                munSel.appendChild(opt);
+            });
+        }
+
+        // --- Eventos UI ---
+        function debounce(fn, ms = 200) {
+            let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+        }
+
+        function wireUI() {
+            $('#year').textContent = new Date().getFullYear();
+
+            // Banners controls
+            const container = $('#tops-row');
+            $('#tops-prev')?.addEventListener('click', () => container.scrollBy({ left: -320, behavior: 'smooth' }));
+            $('#tops-next')?.addEventListener('click', () => container.scrollBy({ left: 320, behavior: 'smooth' }));
+
+            $('#search').addEventListener('input', debounce((e) => { state.q = e.target.value; applyFilters(); }));
+            $('#filter-estado').addEventListener('change', (e) => { state.estado = e.target.value; applyFilters(); });
+            $('#filter-categoria').addEventListener('change', (e) => { state.municipio = e.target.value; applyFilters(); });
+            $('#sort').addEventListener('change', (e) => { state.sort = e.target.value; applyFilters(); });
+            $('#reset').addEventListener('click', () => {
+                state.q = ''; state.estado = ''; state.municipio = ''; state.sort = 'top';
+                $('#search').value = '';
+                $('#filter-estado').value = '';
+                $('#filter-categoria').value = '';
+                $('#sort').value = 'top';
+                applyFilters();
+            });
+        }
+
+        // --- Init ---
+        document.addEventListener('DOMContentLoaded', () => {
+            cargarComerciosDesdeJSON();
+        });
+    </script>
+</body>
+
+</html>
