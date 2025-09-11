@@ -76,12 +76,14 @@ export class App implements OnInit {
     // Signal para el estado de expansión de marcas
     protected readonly brandsExpanded = signal(false);
     
-    // Signal para controlar la visibilidad del modal de alerta
-    protected readonly showLocationAlert = signal(true);
+    // Signals para el slider infinito de comercios principales
+    protected readonly infiniteSliderIndex = signal(0);
+    protected readonly sliderIsTransitioning = signal(false);
     
     // ViewChild para acceder al contenedor de tops y marcas
     @ViewChild('topsContainer') topsContainer?: ElementRef<HTMLElement>;
     @ViewChild('brandsContainer') brandsContainer?: ElementRef<HTMLElement>;
+    @ViewChild('principalesContainer') principalesContainer?: ElementRef<HTMLElement>;
 
     // Computed signals para datos derivados
     protected readonly estados = computed(() => {
@@ -232,20 +234,6 @@ export class App implements OnInit {
         window.open(url, '_blank');
     }
 
-    protected downloadCSV(): void {
-        // Implementar descarga de CSV
-        const csvContent = this.generateCSV();
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', 'comercios_cfe.csv');
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-
     protected onSearchChange(event: Event): void {
         const target = event.target as HTMLInputElement;
         // La búsqueda con debounce se maneja en setupSearchDebounce
@@ -331,10 +319,6 @@ export class App implements OnInit {
         
         // Actualizar el estado del filtro
         this.updateFilterState({ q: brand });
-    }
-
-    protected closeLocationAlert(): void {
-        this.showLocationAlert.set(false);
     }
 
     // Métodos privados optimizados
@@ -538,25 +522,5 @@ export class App implements OnInit {
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
             .toLowerCase();
-    }
-
-    private generateCSV(): string {
-        const headers = ['Razón Social', 'Marca/Tienda', 'Dirección', 'Colonia', 'Municipio', 'Estado', 'CP', 'RFC'];
-        const rows = this.displayedComercios().map(comercio => [
-            comercio.razon_social,
-            comercio.marca_tienda || '',
-            comercio.ubicacion,
-            comercio.colonia || '',
-            comercio.municipio,
-            comercio.estado,
-            comercio.cp || '',
-            comercio.rfc || ''
-        ]);
-
-        const csvContent = [headers, ...rows]
-            .map(row => row.map(field => `"${field}"`).join(','))
-            .join('\n');
-
-        return '\ufeff' + csvContent; // BOM para Excel
     }
 }
