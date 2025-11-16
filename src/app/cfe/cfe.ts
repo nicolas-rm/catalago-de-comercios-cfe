@@ -378,7 +378,14 @@ export class Cfe implements OnInit {
             // Procesar chunk en el siguiente tick para no bloquear UI
             await new Promise(resolve => {
                 setTimeout(() => {
-                    processedData = [...processedData, ...chunk];
+                    // Filtrar comercios que contengan "CHEDRAUI" en marca_tienda o razon_social
+                    const filteredChunk = chunk.filter(c => {
+                        const nombreComercio = this.getNombreComercio(c).toUpperCase();
+                        const razonSocial = c.razon_social.toUpperCase();
+                        return !nombreComercio.includes('CHEDRAUI') && !razonSocial.includes('CHEDRAUI');
+                    });
+
+                    processedData = [...processedData, ...filteredChunk];
 
                     const progress = ((i + 1) / chunks.length) * 50 + 50;
                     this.updateLoadingState({
