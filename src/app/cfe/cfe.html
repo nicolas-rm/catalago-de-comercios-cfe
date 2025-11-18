@@ -18,21 +18,22 @@
     <!-- Search & Quick Filters -->
     <div class="border-t border-gray-200 bg-white/70">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-3">
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 w-full">
-                <!-- Search -->
-                <label class="lg:col-span-6 col-span-12 relative block w-full">
-                    <span class="sr-only">Buscar</span>
-                    <input id="search" #searchInput type="text" placeholder="Buscar por nombre, dirección, ciudad…"
-                        [value]="filterState().q"
-                        class="w-full rounded-xl border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-green-700/40" />
-                    <svg viewBox="0 0 24 24" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"
-                        fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="7" />
-                        <path d="m20 20-3.5-3.5" />
-                    </svg>
-                </label>
-                <!-- Estado -->
-                <div class="lg:col-span-3 col-span-12 w-full">
+            <div class="space-y-3">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 w-full">
+                    <!-- Search -->
+                    <label class="lg:col-span-6 col-span-12 relative block w-full">
+                        <span class="sr-only">Buscar</span>
+                        <input id="search" #searchInput type="text" placeholder="Buscar por nombre, marca o RFC…"
+                            [value]="filterState().q"
+                            class="w-full rounded-xl border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-green-700/40" />
+                        <svg viewBox="0 0 24 24" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="7" />
+                            <path d="m20 20-3.5-3.5" />
+                        </svg>
+                    </label>
+                    <!-- Estado -->
+                    <div class="lg:col-span-3 col-span-12 w-full">
                     <select #estadoSelect [value]="filterState().estado"
                         class="w-full rounded-xl border border-gray-300 bg-white py-2.5 px-3 text-sm shadow-sm focus:ring-2 focus:ring-green-700/40"
                         (change)="onEstadoChange($event)">
@@ -52,6 +53,24 @@
                         <option [value]="municipio">{{ municipio }}</option>
                         }
                     </select>
+                </div>
+                </div>
+                <!-- Checkboxes para opciones de búsqueda -->
+                <div class="w-full flex flex-wrap gap-4">
+                    <label class="inline-flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox"
+                            [checked]="filterState().includeAddress"
+                            (change)="onIncludeAddressChange($event)"
+                            class="h-4 w-4 rounded border-gray-300 text-green-700 focus:ring-2 focus:ring-green-700/40 cursor-pointer" />
+                        <span class="text-sm text-gray-700">Incluir direcciones en la búsqueda</span>
+                    </label>
+                    <label class="inline-flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox"
+                            [checked]="filterState().partialMatch"
+                            (change)="onPartialMatchChange($event)"
+                            class="h-4 w-4 rounded border-gray-300 text-green-700 focus:ring-2 focus:ring-green-700/40 cursor-pointer" />
+                        <span class="text-sm text-gray-700">Búsqueda flexible</span>
+                    </label>
                 </div>
             </div>
             <div class="mt-3 flex items-center justify-between text-sm">

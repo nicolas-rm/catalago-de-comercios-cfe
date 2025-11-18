@@ -1,43 +1,8 @@
 import { Component, signal, computed, ViewChild, ElementRef, OnInit, effect, DestroyRef, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { debounceTime, distinctUntilChanged, fromEvent, startWith } from 'rxjs';
 import { Meta } from '@angular/platform-browser';
-
-// Interfaces para tipos de datos
-interface Comercio {
-    id?: string;
-    razon_social: string;
-    marca_tienda?: string;
-    ubicacion: string;
-    colonia?: string;
-    municipio: string;
-    estado: string;
-    cp?: string;
-    rfc?: string;
-    tienda_ubicacion?: string;
-    top?: boolean;
-}
-
-interface FilterState {
-    q: string;
-    estado: string;
-    municipio: string;
-    sort: 'top' | 'az' | 'estado';
-}
-
-interface LoadingState {
-    isLoading: boolean;
-    progress: number;
-    message: string;
-    error?: string;
-}
-
-interface BrandCategory {
-    title: string;
-    brands: string[];
-    icon: string;
-}
+import { ComercioService } from '../shared/services/comercio.service';
+import { Comercio, FilterState, LoadingState, BrandCategory } from '../shared/models/comercio.model';
+import { setupInfiniteScroll, setupSearchDebounce, scrollToTop, scrollContainer } from '../shared/utils/scroll.utils';
 @Component({
     selector: 'app-inbal',
     imports: [],
@@ -61,12 +26,12 @@ export class Inbal implements OnInit {
         q: '',
         estado: '',
         municipio: '',
-        sort: 'top'
+        sort: 'top',
+        includeAddress: false,
+        partialMatch: false
     });
 
     // Configuración de paginación virtual
-    private readonly ITEMS_PER_PAGE = 50;
-    private readonly CHUNK_SIZE = 1000; // Procesar en chunks de 1000 elementos
     protected readonly currentPage = signal(0);
     protected readonly hasMoreItems = signal(true);
 
@@ -161,7 +126,10 @@ export class Inbal implements OnInit {
         return featured.slice(0, 20); // Limitar a 20 marcas destacadas
     });
 
-    constructor(private http: HttpClient, private metaDatos: Meta) {
+    constructor(
+        private metaDatos: Meta,
+        private comercioService: ComercioService
+    ) {
         // Effect para debug
         effect(() => {
             console.log('Comercios cargados:', this.comercios().length);
@@ -183,29 +151,25 @@ export class Inbal implements OnInit {
         this.setupSearchDebounce();
     }
 
-    // Métodos públicos para el template
+    // Métodos públicos para el template (usando el servicio)
     protected getNombreComercio(comercio: Comercio): string {
-        return comercio.marca_tienda || comercio.razon_social;
+        return this.comercioService.getNombreComercio(comercio);
     }
 
     protected getUbicacionTexto(comercio: Comercio): string {
-        return `${comercio.municipio}, ${comercio.estado}`;
+        return this.comercioService.getUbicacionCompleta(comercio);
     }
 
     protected getDireccionCompleta(comercio: Comercio): string {
-        return `${comercio.ubicacion}${comercio.colonia ? ', ' + comercio.colonia : ''}`;
+        return this.comercioService.getDireccionCompleta(comercio);
     }
 
     protected getUbicacionCompleta(comercio: Comercio): string {
-        return `${comercio.municipio}, ${comercio.estado}`;
+        return this.comercioService.getUbicacionCompleta(comercio);
     }
 
     protected verEnMapa(comercio: Comercio): void {
-        const nombre = this.getNombreComercio(comercio);
-        const direccion = this.getDireccionCompleta(comercio);
-        const ubicacion = this.getUbicacionCompleta(comercio);
-        const query = encodeURIComponent(`${nombre} ${direccion} ${ubicacion}`);
-        const url = `https://www.google.com/maps/search/?api=1&query=${query}`;
+        const url = this.comercioService.getMapUrl(comercio);
         window.open(url, '_blank');
     }
 
@@ -241,9 +205,21 @@ export class Inbal implements OnInit {
             q: '',
             estado: '',
             municipio: '',
-            sort: 'top'
+            sort: 'top',
+            includeAddress: false,
+            partialMatch: false
         });
         this.currentPage.set(0);
+    }
+
+    protected onIncludeAddressChange(event: Event): void {
+        const target = event.target as HTMLInputElement;
+        this.updateFilterState({ includeAddress: target.checked });
+    }
+
+    protected onPartialMatchChange(event: Event): void {
+        const target = event.target as HTMLInputElement;
+        this.updateFilterState({ partialMatch: target.checked });
     }
 
     protected loadMoreItems(): void {
@@ -254,20 +230,11 @@ export class Inbal implements OnInit {
     }
 
     protected scrollTops(direction: number): void {
-        const container = this.topsContainer?.nativeElement;
-        if (container) {
-            container.scrollBy({
-                left: direction * 320,
-                behavior: 'smooth'
-            });
-        }
+        scrollContainer(this.topsContainer?.nativeElement, direction, 320);
     }
 
     protected scrollToTop(): void {
-        window.scrollTo({
-            top: 0,
-            behavior: 'smooth'
-        });
+        scrollToTop();
     }
 
     protected toggleBrandsExpanded(): void {
@@ -275,13 +242,7 @@ export class Inbal implements OnInit {
     }
 
     protected scrollBrands(direction: number): void {
-        const container = this.brandsContainer?.nativeElement;
-        if (container) {
-            container.scrollBy({
-                left: direction * 300,
-                behavior: 'smooth'
-            });
-        }
+        scrollContainer(this.brandsContainer?.nativeElement, direction, 300);
     }
 
     protected searchByBrand(brand: string): void {
@@ -296,198 +257,58 @@ export class Inbal implements OnInit {
         this.updateFilterState({ q: brand });
     }
 
-    // Métodos privados optimizados
+    // Métodos privados optimizados (usando el servicio)
     protected async cargarComercios(): Promise<void> {
         try {
-            this.updateLoadingState({
-                isLoading: true,
-                progress: 0,
-                message: 'Iniciando carga de datos...'
-            });
+            const excludeFilter = (c: Comercio) => {
+                const nombreComercio = this.comercioService.getNombreComercio(c).toUpperCase();
+                const razonSocial = c.razon_social.toUpperCase();
+                return !nombreComercio.includes('CHEDRAUI') && !razonSocial.includes('CHEDRAUI');
+            };
 
-            // Cargar datos reales desde JSON
-            const response = await this.http.get<Comercio[]>('./inbal/inbal.json').toPromise();
-            const data = response || [];
+            const data = await this.comercioService.loadComercios(
+                './inbal/inbal.json',
+                (state) => this.updateLoadingState(state),
+                excludeFilter
+            );
 
-            this.updateLoadingState({
-                isLoading: true,
-                progress: 50,
-                message: `Procesando ${data.length} comercios...`
-            });
-
-            // Procesar en chunks para evitar congelar la UI
-            await this.processDataInChunks(data);
-
-            this.updateLoadingState({
-                isLoading: true,
-                progress: 100,
-                message: 'Finalizando...'
-            });
+            this.comercios.set(data);
 
             // Aplicar filtros iniciales
             await this.applyFiltersAsync(this.filterState());
-
         } catch (error) {
-            console.error('Error cargando comercios:', error);
-            this.updateLoadingState({
-                isLoading: false,
-                progress: 0,
-                message: '',
-                error: 'Error al cargar los datos. Por favor, intenta de nuevo.'
-            });
-        } finally {
-            this.updateLoadingState({
-                isLoading: false,
-                progress: 100,
-                message: 'Datos cargados correctamente'
-            });
+            // El error ya se maneja en el servicio
+            console.error('Error en cargarComercios:', error);
         }
-    }
-
-    private async processDataInChunks(data: Comercio[]): Promise<void> {
-        const chunks = this.chunkArray(data, this.CHUNK_SIZE);
-        let processedData: Comercio[] = [];
-
-        for (let i = 0; i < chunks.length; i++) {
-            const chunk = chunks[i];
-
-            // Procesar chunk en el siguiente tick para no bloquear UI
-            await new Promise(resolve => {
-                setTimeout(() => {
-                    // Filtrar comercios que contengan "CHEDRAUI" en marca_tienda o razon_social
-                    const filteredChunk = chunk.filter(c => {
-                        const nombreComercio = this.getNombreComercio(c).toUpperCase();
-                        const razonSocial = c.razon_social.toUpperCase();
-                        return !nombreComercio.includes('CHEDRAUI') && !razonSocial.includes('CHEDRAUI');
-                    });
-
-                    processedData = [...processedData, ...filteredChunk];
-
-                    const progress = ((i + 1) / chunks.length) * 50 + 50;
-                    this.updateLoadingState({
-                        isLoading: true,
-                        progress,
-                        message: `Procesando ${processedData.length} de ${data.length} comercios...`
-                    });
-
-                    resolve(void 0);
-                }, 0);
-            });
-        }
-
-        this.comercios.set(processedData);
     }
 
     private async applyFiltersAsync(state: FilterState): Promise<void> {
-        return new Promise(resolve => {
-            setTimeout(() => {
-                let filtered = this.comercios();
+        const result = await this.comercioService.applyFilters(
+            this.comercios(),
+            state,
+            this.currentPage()
+        );
 
-                // Aplicar filtros
-                if (state.estado) {
-                    filtered = filtered.filter(c => c.estado === state.estado);
-                }
-
-                if (state.municipio) {
-                    filtered = filtered.filter(c =>
-                        c.municipio.toLowerCase().includes(state.municipio.toLowerCase())
-                    );
-                }
-
-                if (state.q) {
-                    const query = this.normalize(state.q);
-                    filtered = filtered.filter(c => {
-                        const searchText = this.normalize([
-                            c.razon_social,
-                            c.marca_tienda,
-                            c.tienda_ubicacion,
-                            c.ubicacion,
-                            c.colonia,
-                            c.municipio,
-                            c.estado,
-                            c.rfc
-                        ].filter(Boolean).join(' '));
-                        return searchText.includes(query);
-                    });
-                }
-
-                // Aplicar ordenamiento
-                switch (state.sort) {
-                    case 'az':
-                        filtered.sort((a, b) =>
-                            this.getNombreComercio(a).localeCompare(this.getNombreComercio(b))
-                        );
-                        break;
-                    case 'estado':
-                        filtered.sort((a, b) => a.estado.localeCompare(b.estado));
-                        break;
-                    default: // 'top'
-                        filtered.sort((a, b) => {
-                            if (a.top !== b.top) return b.top ? 1 : -1;
-                            return this.getNombreComercio(a).localeCompare(this.getNombreComercio(b));
-                        });
-                }
-
-                // Aplicar paginación
-                const currentPage = this.currentPage();
-                const startIndex = currentPage * this.ITEMS_PER_PAGE;
-                const endIndex = startIndex + this.ITEMS_PER_PAGE;
-                const paginatedResults = filtered.slice(0, endIndex);
-
-                this.displayedComercios.set(paginatedResults);
-                this.hasMoreItems.set(filtered.length > endIndex);
-
-                resolve();
-            }, 0);
-        });
+        this.displayedComercios.set(result.filtered);
+        this.hasMoreItems.set(result.hasMore);
     }
 
     private setupInfiniteScroll(): void {
-        // Detectar scroll para cargar más elementos y mostrar/ocultar botón
-        fromEvent(window, 'scroll')
-            .pipe(
-                debounceTime(100),
-                distinctUntilChanged(),
-                takeUntilDestroyed(this.destroyRef)
-            )
-            .subscribe(() => {
-                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-                const windowHeight = window.innerHeight;
-                const documentHeight = document.documentElement.scrollHeight;
-
-                // Mostrar botón cuando el scroll esté arriba de 300px
-                this.showScrollToTop.set(scrollTop > 300);
-
-                // Cargar más cuando estemos cerca del final (80% del scroll)
-                if (scrollTop + windowHeight >= documentHeight * 0.8) {
-                    this.loadMoreItems();
-                }
-            });
+        setupInfiniteScroll(
+            this.destroyRef,
+            (scrollTop) => this.showScrollToTop.set(scrollTop > 300),
+            () => this.loadMoreItems()
+        );
     }
 
     private setupSearchDebounce(): void {
-        // Configurar debounce para la búsqueda
-        const searchInput = document.querySelector('#search') as HTMLInputElement;
-        if (searchInput) {
-            fromEvent(searchInput, 'input')
-                .pipe(
-                    debounceTime(300), // Esperar 300ms después del último input
-                    distinctUntilChanged(),
-                    takeUntilDestroyed(this.destroyRef)
-                )
-                .subscribe((event: any) => {
-                    const value = event.target.value;
-                    this.updateFilterState({ q: value });
-                });
-        }
-    }
-
-    private chunkArray<T>(array: T[], chunkSize: number): T[][] {
-        const chunks: T[][] = [];
-        for (let i = 0; i < array.length; i += chunkSize) {
-            chunks.push(array.slice(i, i + chunkSize));
-        }
-        return chunks;
+        setupSearchDebounce(
+            this.destroyRef,
+            'search',
+            (value) => this.updateFilterState({ q: value }),
+            300,  // debounce 300ms
+            0     // sin mínimo de caracteres
+        );
     }
 
     private updateLoadingState(update: Partial<LoadingState>): void {
@@ -497,12 +318,5 @@ export class Inbal implements OnInit {
     private updateFilterState(update: Partial<FilterState>): void {
         this.filterState.update(current => ({ ...current, ...update }));
         this.currentPage.set(0); // Reset pagination when filters change
-    }
-
-    private normalize(text: string): string {
-        return text.toString()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase();
     }
 }
