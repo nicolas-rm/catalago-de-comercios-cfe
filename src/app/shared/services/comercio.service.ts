@@ -122,9 +122,14 @@ export class ComercioService {
             setTimeout(() => {
                 let filtered = [...comercios];
 
-                // Filtro por estado
+                // Filtro por estado (usado por CFE)
                 if (state.estado) {
                     filtered = filtered.filter(c => c.estado === state.estado);
+                }
+
+                // Filtro por código postal (usado por INBAL)
+                if (state.cp) {
+                    filtered = filtered.filter(c => c.cp === state.cp);
                 }
 
                 // Filtro por municipio
@@ -138,6 +143,14 @@ export class ComercioService {
                 if (state.q) {
                     const query = state.q;
                     filtered = filtered.filter(c => {
+                        // Detectar si la búsqueda es un código postal (solo números de 4-5 dígitos)
+                        const isPostalCode = /^\d{4,5}$/.test(query.trim());
+
+                        // Si es un código postal, buscar directamente en el campo CP
+                        if (isPostalCode && c.cp) {
+                            return c.cp.includes(query.trim());
+                        }
+
                         // Si "Búsqueda flexible" está activado: buscar con coincidencia parcial
                         // en campos principales o direcciones (según la opción seleccionada)
                         if (state.partialMatch) {
@@ -147,12 +160,14 @@ export class ComercioService {
                                     c.ubicacion,
                                     c.colonia,
                                     c.municipio,
-                                    c.estado
+                                    c.estado,
+                                    c.cp
                                 ]
                                 : [
                                     c.razon_social,
                                     c.marca_tienda,
-                                    c.rfc
+                                    c.rfc,
+                                    c.cp
                                 ];
 
                             const searchText = fieldsToSearch.filter(Boolean).join(' ');
@@ -169,16 +184,18 @@ export class ComercioService {
                                 c.ubicacion,
                                 c.colonia,
                                 c.municipio,
-                                c.estado
+                                c.estado,
+                                c.cp
                             ];
                             const searchText = addressFields.filter(Boolean).join(' ');
                             return this.matchesSearch(searchText, query, false);
                         } else {
-                            // Buscar SOLO en campos principales (nombre, marca, RFC)
+                            // Buscar SOLO en campos principales (nombre, marca, RFC, CP)
                             const mainFields = [
                                 c.razon_social,
                                 c.marca_tienda,
-                                c.rfc
+                                c.rfc,
+                                c.cp
                             ];
                             const searchText = mainFields.filter(Boolean).join(' ');
                             return this.matchesSearch(searchText, query, false);

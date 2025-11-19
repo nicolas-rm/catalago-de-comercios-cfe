@@ -16,7 +16,8 @@ export interface Comercio {
 
 export interface FilterState {
     q: string;
-    estado: string;
+    estado?: string;
+    cp?: string;
     municipio: string;
     sort: 'top' | 'az' | 'estado';
     includeAddress: boolean;

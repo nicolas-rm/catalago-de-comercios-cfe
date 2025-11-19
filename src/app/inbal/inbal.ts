@@ -10,6 +10,10 @@ import { setupInfiniteScroll, setupSearchDebounce, scrollToTop, scrollContainer 
     styleUrl: './inbal.css'
 })
 export class Inbal implements OnInit {
+
+    // Comercios excludidos del INBAL
+    private readonly excludedComercios = ['CHEDRAUI', 'SEXSHOP', 'SEX SHOP'];
+
     private readonly destroyRef = inject(DestroyRef);
 
     // Señales para el estado reactivo
@@ -24,7 +28,6 @@ export class Inbal implements OnInit {
 
     protected readonly filterState = signal<FilterState>({
         q: '',
-        estado: '',
         municipio: '',
         sort: 'top',
         includeAddress: false,
@@ -51,11 +54,6 @@ export class Inbal implements OnInit {
     @ViewChild('principalesContainer') principalesContainer?: ElementRef<HTMLElement>;
 
     // Computed signals para datos derivados
-    protected readonly estados = computed(() => {
-        const estadosSet = new Set(this.comercios().map(c => c.estado));
-        return Array.from(estadosSet).filter(Boolean).sort();
-    });
-
     protected readonly municipios = computed(() => {
         const municipiosSet = new Set(this.comercios().map(c => c.municipio));
         return Array.from(municipiosSet).filter(Boolean).sort();
@@ -185,11 +183,6 @@ export class Inbal implements OnInit {
         this.onSearchChange(event);
     }
 
-    protected onEstadoChange(event: Event): void {
-        const target = event.target as HTMLSelectElement;
-        this.updateFilterState({ estado: target.value });
-    }
-
     protected onMunicipioChange(event: Event): void {
         const target = event.target as HTMLSelectElement;
         this.updateFilterState({ municipio: target.value });
@@ -203,7 +196,6 @@ export class Inbal implements OnInit {
     protected resetFilters(): void {
         this.filterState.set({
             q: '',
-            estado: '',
             municipio: '',
             sort: 'top',
             includeAddress: false,
@@ -263,7 +255,7 @@ export class Inbal implements OnInit {
             const excludeFilter = (c: Comercio) => {
                 const nombreComercio = this.comercioService.getNombreComercio(c).toUpperCase();
                 const razonSocial = c.razon_social.toUpperCase();
-                return !nombreComercio.includes('CHEDRAUI') && !razonSocial.includes('CHEDRAUI');
+                return !this.excludedComercios.some(excluded => nombreComercio.includes(excluded) || razonSocial.includes(excluded));
             };
 
             const data = await this.comercioService.loadComercios(

@@ -9,6 +9,9 @@ import { setupInfiniteScroll, setupSearchDebounce, scrollToTop, scrollContainer 
     styleUrl: './cfe.css'
 })
 export class Cfe implements OnInit {
+
+    private readonly excludedComercios = ['CHEDRAUI', 'SEXSHOP'];
+
     private readonly destroyRef = inject(DestroyRef);
 
     // Señales para el estado reactivo
@@ -286,7 +289,7 @@ export class Cfe implements OnInit {
             const excludeFilter = (c: Comercio) => {
                 const nombreComercio = this.comercioService.getNombreComercio(c).toUpperCase();
                 const razonSocial = c.razon_social.toUpperCase();
-                return !nombreComercio.includes('CHEDRAUI') && !razonSocial.includes('CHEDRAUI');
+                return !this.excludedComercios.some(excluded => nombreComercio.includes(excluded) || razonSocial.includes(excluded));
             };
 
             const data = await this.comercioService.loadComercios(

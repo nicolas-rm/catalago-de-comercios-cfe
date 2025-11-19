@@ -22,9 +22,9 @@
             <div class="space-y-3">
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 w-full">
                     <!-- Search -->
-                    <label class="lg:col-span-6 col-span-12 relative block w-full">
+                    <label class="lg:col-span-9 col-span-12 relative block w-full">
                         <span class="sr-only">Buscar</span>
-                        <input id="search" #searchInput type="text" placeholder="Buscar por nombre, marca o RFC…"
+                        <input id="search" #searchInput type="text" placeholder="Buscar por nombre, marca, RFC o código postal…"
                             [value]="filterState().q"
                             class="w-full rounded-xl border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-[#611133]/40" />
                         <svg viewBox="0 0 24 24" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"
@@ -33,17 +33,6 @@
                             <path d="m20 20-3.5-3.5" />
                         </svg>
                     </label>
-                    <!-- Estado -->
-                    <div class="lg:col-span-3 col-span-12 w-full">
-                        <select #estadoSelect [value]="filterState().estado"
-                            class="w-full rounded-xl border border-gray-300 bg-white py-2.5 px-3 text-sm shadow-sm focus:ring-2 focus:ring-[#611133]/40"
-                            (change)="onEstadoChange($event)">
-                            <option value="">Todos los estados</option>
-                            @for (estado of estados(); track estado) {
-                            <option [value]="estado">{{ estado }}</option>
-                            }
-                        </select>
-                    </div>
                     <!-- Municipio -->
                     <div class="lg:col-span-3 col-span-12 w-full">
                         <select #municipioSelect [value]="filterState().municipio"
