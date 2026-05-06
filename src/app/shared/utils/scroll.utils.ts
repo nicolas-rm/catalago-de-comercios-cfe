@@ -1,7 +1,6 @@
-import { fromEvent } from 'rxjs';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { debounceTime, distinctUntilChanged, fromEvent, map } from 'rxjs';
 
 /**
  * Configura infinite scroll para detectar cuando el usuario está cerca del final
@@ -14,7 +13,6 @@ export function setupInfiniteScroll(
     fromEvent(window, 'scroll')
         .pipe(
             debounceTime(100),
-            distinctUntilChanged(),
             takeUntilDestroyed(destroyRef)
         )
         .subscribe(() => {
@@ -45,14 +43,12 @@ export function setupSearchDebounce(
     if (searchInput) {
         fromEvent(searchInput, 'input')
             .pipe(
+                map((event: Event) => (event.target as HTMLInputElement).value),
                 debounceTime(debounceMs),
                 distinctUntilChanged(),
                 takeUntilDestroyed(destroyRef)
             )
-            .subscribe((event: any) => {
-                const value = event.target.value;
-
-                // Solo buscar si cumple con el mínimo de caracteres
+            .subscribe((value: string) => {
                 if (value.length === 0 || value.length >= minChars) {
                     onSearch(value);
                 }

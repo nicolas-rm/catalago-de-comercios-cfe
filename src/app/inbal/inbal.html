@@ -3,11 +3,6 @@
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between py-4 gap-4">
             <div class="flex items-center gap-3">
-                <!-- Logo placeholder -->
-                <!-- <div class="h-10 w-10 rounded-lg bg-[#611133]/10 grid place-items-center">
-                </div> -->
-                <!-- <img src="./cfe/image.png" alt="Logo CFE" class="h-32 w-32 text-[#611133] p-0 m-0 -my-8"
-                    aria-hidden="true"> -->
                 <div>
                     <p class="text-xl font-medium text-[#611133]">Instituto Nacional de Bellas Artes y Literatura</p>
                     <h1 class="text-lg font-semibold leading-tight">Catálogo de comercios autorizados</h1>
@@ -24,7 +19,7 @@
                     <!-- Search -->
                     <label class="lg:col-span-9 col-span-12 relative block w-full">
                         <span class="sr-only">Buscar</span>
-                        <input id="search" #searchInput type="text" placeholder="Buscar por nombre, marca, RFC o código postal…"
+                        <input id="search" type="text" placeholder="Buscar por nombre, marca, RFC o código postal…"
                             [value]="filterState().q"
                             class="w-full rounded-xl border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-[#611133]/40" />
                         <svg viewBox="0 0 24 24" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"
@@ -35,7 +30,7 @@
                     </label>
                     <!-- Municipio -->
                     <div class="lg:col-span-3 col-span-12 w-full">
-                        <select #municipioSelect [value]="filterState().municipio"
+                        <select [value]="filterState().municipio"
                             class="w-full rounded-xl border border-gray-300 bg-white py-2.5 px-3 text-sm shadow-sm focus:ring-2 focus:ring-[#611133]/40"
                             (change)="onMunicipioChange($event)">
                             <option value="">Todos los municipios</option>
@@ -73,7 +68,7 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <label class="text-gray-600">Ordenar:</label>
-                    <select #sortSelect [value]="filterState().sort"
+                    <select [value]="filterState().sort"
                         class="rounded-lg border border-gray-300 bg-white py-2 px-2 text-sm shadow-sm focus:ring-2 focus:ring-[#611133]/40"
                         (change)="onSortChange($event)">
                         <option value="top">Destacados</option>
@@ -159,7 +154,7 @@
                             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
                                 @for (brand of category.brands; track brand) {
                                 <button type="button"
-                                    class="px-3 py-2 rounded-lg bg-gray-50 hover:bg-[#611133]hover:border-[#611133] border border-gray-200 transition text-left"
+                                    class="px-3 py-2 rounded-lg bg-gray-50 hover:bg-[#611133]/10 hover:border-[#611133] border border-gray-200 transition text-left"
                                     (click)="searchByBrand(brand)">
                                     <span class="text-sm font-medium text-gray-900">{{ brand }}</span>
                                 </button>

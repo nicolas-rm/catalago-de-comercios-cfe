@@ -3,10 +3,6 @@
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between py-4 gap-4">
             <div class="flex items-center gap-3">
-                <!-- Logo placeholder -->
-                <!-- <div class="h-10 w-10 rounded-lg bg-green-700/10 grid place-items-center">
-                </div> -->
-                <!-- <img src="./cfe/image.png" alt="Logo CFE" class="h-32 w-32 text-green-700 p-0 m-0 -my-8" aria-hidden="true"> -->
                 <div>
                     <p class="text-xl font-medium text-green-700">Comisión Federal de Electricidad</p>
                     <h1 class="text-lg font-semibold leading-tight">Catálogo de comercios</h1>
@@ -23,7 +19,7 @@
                     <!-- Search -->
                     <label class="lg:col-span-6 col-span-12 relative block w-full">
                         <span class="sr-only">Buscar</span>
-                        <input id="search" #searchInput type="text" placeholder="Buscar por nombre, marca, RFC o código postal…"
+                        <input id="search" type="text" placeholder="Buscar por nombre, marca, RFC o código postal…"
                             [value]="filterState().q"
                             class="w-full rounded-xl border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-green-700/40" />
                         <svg viewBox="0 0 24 24" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"
@@ -34,7 +30,7 @@
                     </label>
                     <!-- Estado -->
                     <div class="lg:col-span-3 col-span-12 w-full">
-                    <select #estadoSelect [value]="filterState().estado"
+                    <select [value]="filterState().estado"
                         class="w-full rounded-xl border border-gray-300 bg-white py-2.5 px-3 text-sm shadow-sm focus:ring-2 focus:ring-green-700/40"
                         (change)="onEstadoChange($event)">
                         <option value="">Todos los estados</option>
@@ -45,7 +41,7 @@
                 </div>
                 <!-- Municipio -->
                 <div class="lg:col-span-3 col-span-12 w-full">
-                    <select #municipioSelect [value]="filterState().municipio"
+                    <select [value]="filterState().municipio"
                         class="w-full rounded-xl border border-gray-300 bg-white py-2.5 px-3 text-sm shadow-sm focus:ring-2 focus:ring-green-700/40"
                         (change)="onMunicipioChange($event)">
                         <option value="">Todos los municipios</option>
@@ -83,7 +79,7 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <label class="text-gray-600">Ordenar:</label>
-                    <select #sortSelect [value]="filterState().sort"
+                    <select [value]="filterState().sort"
                         class="rounded-lg border border-gray-300 bg-white py-2 px-2 text-sm shadow-sm focus:ring-2 focus:ring-green-700/40"
                         (change)="onSortChange($event)">
                         <option value="top">Destacados</option>

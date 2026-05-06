@@ -1,5 +1,6 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { Comercio, FilterState, LoadingState } from '../models/comercio.model';
 
 @Injectable({
@@ -26,8 +27,7 @@ export class ComercioService {
                 message: 'Iniciando carga de datos...'
             });
 
-            const response = await this.http.get<Comercio[]>(jsonPath).toPromise();
-            const data = response || [];
+            const data = await firstValueFrom(this.http.get<Comercio[]>(jsonPath));
 
             updateLoadingState({
                 isLoading: true,
@@ -75,7 +75,7 @@ export class ComercioService {
         excludeFilter?: (comercio: Comercio) => boolean
     ): Promise<Comercio[]> {
         const chunks = this.chunkArray(data, this.CHUNK_SIZE);
-        let processedData: Comercio[] = [];
+        const processedData: Comercio[] = [];
         let idCounter = 0;
 
         for (let i = 0; i < chunks.length; i++) {
@@ -93,7 +93,7 @@ export class ComercioService {
                         id: comercio.id || `comercio-${++idCounter}`
                     }));
 
-                    processedData = [...processedData, ...chunkWithIds];
+                    processedData.push(...chunkWithIds);
 
                     const progress = ((i + 1) / chunks.length) * 50 + 50;
                     updateLoadingState({
