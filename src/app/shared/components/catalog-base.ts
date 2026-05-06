@@ -4,10 +4,12 @@ import { ComercioService } from '../services/comercio.service';
 import { scrollContainer, scrollToTop, setupInfiniteScroll, setupSearchDebounce } from '../utils/scroll.utils';
 
 interface CatalogConfig {
-    jsonPath: string;
+    jsonPath?: string;
+    jsonPaths?: string[];
     excludedComercios: string[];
     initialFilterState: FilterState;
     brandCategories: BrandCategory[];
+    preferredBrands?: string[];
     searchInputId?: string;
 }
 
@@ -21,10 +23,11 @@ const SCROLL_TO_TOP_THRESHOLD = 300;
 })
 export abstract class CatalogBase implements OnInit {
     private readonly destroyRef = inject(DestroyRef);
-    private readonly jsonPath: string;
+    private readonly jsonPaths: string[];
     private readonly excludedComercios: string[];
     private readonly initialFilterState: FilterState;
     private readonly searchInputId: string;
+    private readonly preferredBrands: string[];
 
     protected brandsContainer?: ElementRef<HTMLElement>;
 
@@ -87,10 +90,12 @@ export abstract class CatalogBase implements OnInit {
         protected readonly comercioService: ComercioService,
         config: CatalogConfig
     ) {
-        this.jsonPath = config.jsonPath;
+        const providedPaths = config.jsonPaths ?? (config.jsonPath ? [config.jsonPath] : []);
+        this.jsonPaths = providedPaths;
         this.excludedComercios = config.excludedComercios.map(name => name.toUpperCase());
         this.initialFilterState = { ...config.initialFilterState };
         this.searchInputId = config.searchInputId ?? 'search';
+        this.preferredBrands = config.preferredBrands ?? [];
 
         this.filterState.set({ ...this.initialFilterState });
         this.brandCategories.set(config.brandCategories);
@@ -100,7 +105,7 @@ export abstract class CatalogBase implements OnInit {
         });
     }
 
-    protected beforeInitialLoad(): void {}
+    protected beforeInitialLoad(): void { }
 
     async ngOnInit(): Promise<void> {
         this.beforeInitialLoad();
@@ -187,8 +192,8 @@ export abstract class CatalogBase implements OnInit {
 
     protected async cargarComercios(): Promise<void> {
         try {
-            const data = await this.comercioService.loadComercios(
-                this.jsonPath,
+            const data = await this.comercioService.loadComerciosMultiple(
+                this.jsonPaths,
                 (state) => this.updateLoadingState(state),
                 this.createExcludeFilter()
             );
@@ -218,7 +223,8 @@ export abstract class CatalogBase implements OnInit {
         const result = await this.comercioService.applyFilters(
             this.comercios(),
             state,
-            this.currentPage()
+            this.currentPage(),
+            this.preferredBrands
         );
 
         this.displayedComercios.set(result.filtered);

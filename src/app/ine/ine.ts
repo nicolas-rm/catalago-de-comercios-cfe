@@ -14,7 +14,31 @@ const INE_INITIAL_FILTER_STATE: FilterState = {
 
 const INE_EXCLUDED_COMERCIOS = ['SEXSHOP', 'SEX SHOP'];
 
+const INE_PREFERRED_BRANDS = [
+    'CHEDRAUI',
+    'SUPER CHEDRAUI',
+    'SUPER CHE',
+    'SUPERCITO',
+    'SELECTO CHEDRAUI',
+    'SELECTO SUPER CHEDRAUI',
+];
+
 const INE_BRAND_CATEGORIES: BrandCategory[] = [
+    {
+        title: 'Autoservicio / Retail',
+        icon: '🛒',
+        brands: [
+            'CHEDRAUI',
+            'SUPER CHEDRAUI',
+            'SUPER CHE',
+            'SUPERCITO',
+            'SELECTO CHEDRAUI',
+            'SELECTO SUPER CHEDRAUI',
+            'ARTELI',
+            'SORIANA',
+            'ARAMBURO',
+        ],
+    },
     {
         title: 'Moda y Fast Fashion',
         icon: '👕',
@@ -36,11 +60,6 @@ const INE_BRAND_CATEGORIES: BrandCategory[] = [
         brands: ['COPPEL'],
     },
     {
-        title: 'Autoservicio / Retail',
-        icon: '🛒',
-        brands: ['SORIANA', 'SUPERCITO', 'CHEDRAUI'],
-    },
-    {
         title: 'Deportivo y Casual',
         icon: '👟',
         brands: ['ADIDAS', 'CONVERSE'],
@@ -60,10 +79,11 @@ export class Ine extends CatalogBase {
         comercioService: ComercioService,
     ) {
         super(comercioService, {
-            jsonPath: 'ine/ine.json',
+            jsonPaths: ['ine/ine.json', 'ine/ine2.json'],
             excludedComercios: INE_EXCLUDED_COMERCIOS,
             initialFilterState: INE_INITIAL_FILTER_STATE,
             brandCategories: INE_BRAND_CATEGORIES,
+            preferredBrands: INE_PREFERRED_BRANDS,
         });
     }
 

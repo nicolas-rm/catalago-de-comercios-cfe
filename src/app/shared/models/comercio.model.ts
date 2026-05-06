@@ -12,6 +12,7 @@ export interface Comercio {
     rfc?: string;
     tienda_ubicacion?: string;
     top?: boolean;
+    preference?: string[];
 }
 
 export interface FilterState {

@@ -10,7 +10,7 @@ export class ComercioService {
     private readonly ITEMS_PER_PAGE = 50;
     private readonly CHUNK_SIZE = 1000;
 
-    constructor(private http: HttpClient) {}
+    constructor(private http: HttpClient) { }
 
     /**
      * Carga comercios desde un archivo JSON
@@ -37,6 +37,83 @@ export class ComercioService {
 
             const processedData = await this.processDataInChunks(
                 data,
+                updateLoadingState,
+                excludeFilter
+            );
+
+            updateLoadingState({
+                isLoading: true,
+                progress: 100,
+                message: 'Finalizando...'
+            });
+
+            return processedData;
+        } catch (error) {
+            console.error('Error cargando comercios:', error);
+            updateLoadingState({
+                isLoading: false,
+                progress: 0,
+                message: '',
+                error: 'Error al cargar los datos. Por favor, intenta de nuevo.'
+            });
+            throw error;
+        } finally {
+            updateLoadingState({
+                isLoading: false,
+                progress: 100,
+                message: 'Datos cargados correctamente'
+            });
+        }
+    }
+
+    /**
+     * Carga comercios desde multiples archivos JSON
+     */
+    async loadComerciosMultiple(
+        jsonPaths: string[],
+        updateLoadingState: (state: Partial<LoadingState>) => void,
+        excludeFilter?: (comercio: Comercio) => boolean
+    ): Promise<Comercio[]> {
+        if (jsonPaths.length === 0) {
+            updateLoadingState({
+                isLoading: false,
+                progress: 0,
+                message: '',
+                error: 'No se proporcionaron rutas de datos.'
+            });
+            return [];
+        }
+
+        try {
+            updateLoadingState({
+                isLoading: true,
+                progress: 0,
+                message: 'Iniciando carga de datos...'
+            });
+
+            const datasets: Comercio[][] = [];
+            for (let i = 0; i < jsonPaths.length; i++) {
+                const jsonPath = jsonPaths[i];
+                updateLoadingState({
+                    isLoading: true,
+                    progress: Math.round((i / jsonPaths.length) * 25),
+                    message: `Cargando datos (${i + 1}/${jsonPaths.length})...`
+                });
+
+                const data = await firstValueFrom(this.http.get<Comercio[]>(jsonPath));
+                datasets.push(data);
+            }
+
+            const merged = datasets.flat();
+
+            updateLoadingState({
+                isLoading: true,
+                progress: 50,
+                message: `Procesando ${merged.length} comercios...`
+            });
+
+            const processedData = await this.processDataInChunks(
+                merged,
                 updateLoadingState,
                 excludeFilter
             );
@@ -116,11 +193,13 @@ export class ComercioService {
     async applyFilters(
         comercios: Comercio[],
         state: FilterState,
-        currentPage: number
+        currentPage: number,
+        preferredBrands: string[] = []
     ): Promise<{ filtered: Comercio[]; hasMore: boolean }> {
         return new Promise(resolve => {
             setTimeout(() => {
                 let filtered = [...comercios];
+                const shouldUsePreferredBrands = !state.q && preferredBrands.length > 0;
 
                 // Filtro por estado (usado por CFE)
                 if (state.estado) {
@@ -161,13 +240,15 @@ export class ComercioService {
                                     c.colonia,
                                     c.municipio,
                                     c.estado,
-                                    c.cp
+                                    c.cp,
+                                    ...(c.preference ?? [])
                                 ]
                                 : [
                                     c.razon_social,
                                     c.marca_tienda,
                                     c.rfc,
-                                    c.cp
+                                    c.cp,
+                                    ...(c.preference ?? [])
                                 ];
 
                             const searchText = fieldsToSearch.filter(Boolean).join(' ');
@@ -185,7 +266,8 @@ export class ComercioService {
                                 c.colonia,
                                 c.municipio,
                                 c.estado,
-                                c.cp
+                                c.cp,
+                                ...(c.preference ?? [])
                             ];
                             const searchText = addressFields.filter(Boolean).join(' ');
                             return this.matchesSearch(searchText, query, false);
@@ -195,7 +277,8 @@ export class ComercioService {
                                 c.razon_social,
                                 c.marca_tienda,
                                 c.rfc,
-                                c.cp
+                                c.cp,
+                                ...(c.preference ?? [])
                             ];
                             const searchText = mainFields.filter(Boolean).join(' ');
                             return this.matchesSearch(searchText, query, false);
@@ -206,17 +289,41 @@ export class ComercioService {
                 // Ordenamiento
                 switch (state.sort) {
                     case 'az':
-                        filtered.sort((a, b) =>
-                            this.getNombreComercio(a).localeCompare(this.getNombreComercio(b))
-                        );
+                        filtered.sort((a, b) => {
+                            const nameOrder = this.getNombreComercio(a).localeCompare(this.getNombreComercio(b));
+                            if (state.q) {
+                                return this.compareWithPreferenceAndMatch(a, b, state.q, nameOrder);
+                            }
+                            if (shouldUsePreferredBrands) {
+                                return this.compareWithPreferredBrandPriority(a, b, preferredBrands, nameOrder);
+                            }
+                            return this.compareWithPreferencePriority(a, b, nameOrder);
+                        });
                         break;
                     case 'estado':
-                        filtered.sort((a, b) => a.estado.localeCompare(b.estado));
+                        filtered.sort((a, b) => {
+                            const stateOrder = a.estado.localeCompare(b.estado);
+                            if (state.q) {
+                                return this.compareWithPreferenceAndMatch(a, b, state.q, stateOrder);
+                            }
+                            if (shouldUsePreferredBrands) {
+                                return this.compareWithPreferredBrandPriority(a, b, preferredBrands, stateOrder);
+                            }
+                            return this.compareWithPreferencePriority(a, b, stateOrder);
+                        });
                         break;
                     default: // 'top'
                         filtered.sort((a, b) => {
-                            if (a.top !== b.top) return b.top ? 1 : -1;
-                            return this.getNombreComercio(a).localeCompare(this.getNombreComercio(b));
+                            const topOrder = a.top !== b.top ? (b.top ? 1 : -1) : 0;
+                            const nameOrder = this.getNombreComercio(a).localeCompare(this.getNombreComercio(b));
+                            const fallback = topOrder || nameOrder;
+                            if (state.q) {
+                                return this.compareWithPreferenceAndMatch(a, b, state.q, fallback);
+                            }
+                            if (shouldUsePreferredBrands) {
+                                return this.compareWithPreferredBrandPriority(a, b, preferredBrands, fallback);
+                            }
+                            return this.compareWithPreferencePriority(a, b, fallback);
                         });
                 }
 
@@ -282,6 +389,65 @@ export class ComercioService {
                 words.some(word => word === queryWord)
             );
         }
+    }
+
+    private compareWithPreferencePriority(a: Comercio, b: Comercio, fallback: number): number {
+        const aHasPreference = (a.preference?.length ?? 0) > 0;
+        const bHasPreference = (b.preference?.length ?? 0) > 0;
+        if (aHasPreference !== bHasPreference) return aHasPreference ? -1 : 1;
+        return fallback;
+    }
+
+    private compareWithPreferredBrandPriority(
+        a: Comercio,
+        b: Comercio,
+        preferredBrands: string[],
+        fallback: number
+    ): number {
+        const aMatches = this.matchesPreferredBrands(a, preferredBrands);
+        const bMatches = this.matchesPreferredBrands(b, preferredBrands);
+        if (aMatches !== bMatches) return aMatches ? -1 : 1;
+        return this.compareWithPreferencePriority(a, b, fallback);
+    }
+
+    private matchesPreferredBrands(comercio: Comercio, preferredBrands: string[]): boolean {
+        if (preferredBrands.length === 0) return false;
+
+        const normalizedName = this.normalize(this.getNombreComercio(comercio));
+
+        return preferredBrands.some(brand => {
+            const normalizedBrand = this.normalize(brand);
+            if (!normalizedBrand) return false;
+            return normalizedName.includes(normalizedBrand);
+        });
+    }
+
+    private compareWithPreferenceAndMatch(
+        a: Comercio,
+        b: Comercio,
+        query: string,
+        fallback: number
+    ): number {
+        const aScore = this.getNombreMatchScore(a, query);
+        const bScore = this.getNombreMatchScore(b, query);
+        if (aScore !== bScore) return bScore - aScore;
+        if (aScore > 0) return fallback;
+
+        const preferenceOrder = this.compareWithPreferencePriority(a, b, 0);
+        if (preferenceOrder !== 0) return preferenceOrder;
+
+        return fallback;
+    }
+
+    private getNombreMatchScore(comercio: Comercio, query: string): number {
+        const nombre = this.normalize(this.getNombreComercio(comercio));
+        const normalizedQuery = this.normalize(query).trim();
+        if (!normalizedQuery) return 0;
+
+        if (nombre === normalizedQuery) return 3;
+        if (nombre.startsWith(normalizedQuery)) return 2;
+        if (nombre.includes(normalizedQuery)) return 1;
+        return 0;
     }
 
     /**
