@@ -12,13 +12,22 @@ const INBAL_INITIAL_FILTER_STATE: FilterState = {
     partialMatch: false,
 };
 
-export const INBAL_EXCLUDED_COMERCIOS = ['WALMART', 'BODEGA AURRERA', 'MI BODEGA AURRERA', 'SAMS CLUB', "SAM'S CLUB", 'COSTCO', 'CITY CLUB', 'CASA LEY', 'CALIMAX', 'ALSUPER', 'SEXSHOP', 'SEX SHOP'];
+export const INBAL_EXCLUDED_COMERCIOS = ['WALMART', 'WAL MART', 'SUPERAMA', 'AURRERA', 'SAMS CLUB', "SAM'S CLUB", 'SAM S CLUB', 'COSTCO', 'CITY CLUB', 'CASA LEY', 'CALIMAX', 'ALSUPER', 'SEXSHOP', 'SEX SHOP'];
+
+const INBAL_INCLUDED_COMERCIOS = ['SORIANA', 'CHEDRAUI'];
+
+const INBAL_PREFERRED_BRANDS = ['SORIANA', 'CHEDRAUI'];
 
 const INBAL_BRAND_CATEGORIES: BrandCategory[] = [
     {
+        title: '🏪 Autoservicio y Departamentales',
+        icon: '🏬',
+        brands: ['SORIANA', 'CHEDRAUI', 'COPPEL', 'CIMACO'],
+    },
+    {
         title: '👕 Moda',
         icon: '👕',
-        brands: ['ZARA', 'BERSHKA', 'PULL & BEAR', 'STRADIVARIUS', 'MASSIMO DUTTI', 'OYSHO', 'ZARA HOME', 'LEFTIES', 'BENETTON', 'C&A', 'CKLASS', 'BOBOIS', 'CAPA DE OZONO', 'C&A'],
+        brands: ['ZARA', 'BERSHKA', 'PULL & BEAR', 'STRADIVARIUS', 'MASSIMO DUTTI', 'OYSHO', 'ZARA HOME', 'BENETTON', 'C&A', 'CKLASS', 'BOBOIS', 'CAPA DE OZONO', 'C&A'],
     },
     {
         title: '👞 Calzado',
@@ -48,12 +57,7 @@ const INBAL_BRAND_CATEGORIES: BrandCategory[] = [
     {
         title: '💍 Joyería',
         icon: '💍',
-        brands: ['SWAROVSKI', 'BIZZARRO', 'AGATHA', 'TOUS'],
-    },
-    {
-        title: '🏪 Departamentales',
-        icon: '🏬',
-        brands: ['COPPEL', 'CHEDRAUI', 'CITY CLUB', 'COSTCO', 'CASA LEY', 'BODEGA AURRERA', 'CALIMAX', 'CIMACO'],
+        brands: ['AGATHA', 'TOUS'],
     },
     {
         title: '🏄 Deportivo',
@@ -82,8 +86,10 @@ export class Inbal2026 extends CatalogBase {
         super(comercioService, {
             jsonPath: 'inbal-2026/inbal-2026.json',
             excludedComercios: INBAL_EXCLUDED_COMERCIOS,
+            includedComercios: INBAL_INCLUDED_COMERCIOS,
             initialFilterState: INBAL_INITIAL_FILTER_STATE,
             brandCategories: INBAL_BRAND_CATEGORIES,
+            preferredBrands: INBAL_PREFERRED_BRANDS,
         });
     }
 

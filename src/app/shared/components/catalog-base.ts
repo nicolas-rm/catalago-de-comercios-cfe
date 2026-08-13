@@ -7,6 +7,7 @@ interface CatalogConfig {
     jsonPath?: string;
     jsonPaths?: string[];
     excludedComercios: string[];
+    includedComercios?: string[];
     initialFilterState: FilterState;
     brandCategories: BrandCategory[];
     preferredBrands?: string[];
@@ -25,6 +26,7 @@ export abstract class CatalogBase implements OnInit {
     private readonly destroyRef = inject(DestroyRef);
     private readonly jsonPaths: string[];
     private readonly excludedComercios: string[];
+    private readonly includedComercios: string[];
     private readonly initialFilterState: FilterState;
     private readonly searchInputId: string;
     private readonly preferredBrands: string[];
@@ -93,6 +95,7 @@ export abstract class CatalogBase implements OnInit {
         const providedPaths = config.jsonPaths ?? (config.jsonPath ? [config.jsonPath] : []);
         this.jsonPaths = providedPaths;
         this.excludedComercios = config.excludedComercios.map(name => name.toUpperCase());
+        this.includedComercios = config.includedComercios?.map(name => name.toUpperCase()) ?? [];
         this.initialFilterState = { ...config.initialFilterState };
         this.searchInputId = config.searchInputId ?? 'search';
         this.preferredBrands = config.preferredBrands ?? [];
@@ -213,9 +216,13 @@ export abstract class CatalogBase implements OnInit {
         return (comercio: Comercio) => {
             const nombreComercio = this.comercioService.getNombreComercio(comercio).toUpperCase();
             const razonSocial = comercio.razon_social.toUpperCase();
-            return !this.excludedComercios.some(
-                excluded => nombreComercio.includes(excluded) || razonSocial.includes(excluded)
-            );
+            const searchableName = `${nombreComercio} ${razonSocial}`;
+
+            if (this.includedComercios.some(included => searchableName.includes(included))) {
+                return true;
+            }
+
+            return !this.excludedComercios.some(excluded => searchableName.includes(excluded));
         };
     }
 

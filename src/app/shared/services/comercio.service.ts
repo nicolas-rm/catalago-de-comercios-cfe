@@ -292,7 +292,7 @@ export class ComercioService {
                         filtered.sort((a, b) => {
                             const nameOrder = this.getNombreComercio(a).localeCompare(this.getNombreComercio(b));
                             if (state.q) {
-                                return this.compareWithPreferenceAndMatch(a, b, state.q, nameOrder);
+                                return this.compareWithPreferenceAndMatch(a, b, state.q, preferredBrands, nameOrder);
                             }
                             if (shouldUsePreferredBrands) {
                                 return this.compareWithPreferredBrandPriority(a, b, preferredBrands, nameOrder);
@@ -304,7 +304,7 @@ export class ComercioService {
                         filtered.sort((a, b) => {
                             const stateOrder = a.estado.localeCompare(b.estado);
                             if (state.q) {
-                                return this.compareWithPreferenceAndMatch(a, b, state.q, stateOrder);
+                                return this.compareWithPreferenceAndMatch(a, b, state.q, preferredBrands, stateOrder);
                             }
                             if (shouldUsePreferredBrands) {
                                 return this.compareWithPreferredBrandPriority(a, b, preferredBrands, stateOrder);
@@ -318,7 +318,7 @@ export class ComercioService {
                             const nameOrder = this.getNombreComercio(a).localeCompare(this.getNombreComercio(b));
                             const fallback = topOrder || nameOrder;
                             if (state.q) {
-                                return this.compareWithPreferenceAndMatch(a, b, state.q, fallback);
+                                return this.compareWithPreferenceAndMatch(a, b, state.q, preferredBrands, fallback);
                             }
                             if (shouldUsePreferredBrands) {
                                 return this.compareWithPreferredBrandPriority(a, b, preferredBrands, fallback);
@@ -404,18 +404,33 @@ export class ComercioService {
         preferredBrands: string[],
         fallback: number
     ): number {
-        const aMatches = this.matchesPreferredBrands(a, preferredBrands);
-        const bMatches = this.matchesPreferredBrands(b, preferredBrands);
-        if (aMatches !== bMatches) return aMatches ? -1 : 1;
+        const preferredOrder = this.comparePreferredBrands(a, b, preferredBrands);
+        if (preferredOrder !== 0) return preferredOrder;
         return this.compareWithPreferencePriority(a, b, fallback);
     }
 
-    private matchesPreferredBrands(comercio: Comercio, preferredBrands: string[]): boolean {
-        if (preferredBrands.length === 0) return false;
+    private comparePreferredBrands(
+        a: Comercio,
+        b: Comercio,
+        preferredBrands: string[]
+    ): number {
+        const aRank = this.getPreferredBrandRank(a, preferredBrands);
+        const bRank = this.getPreferredBrandRank(b, preferredBrands);
+        const aMatches = aRank !== -1;
+        const bMatches = bRank !== -1;
+        if (aMatches !== bMatches) return aMatches ? -1 : 1;
+        if (aMatches && bMatches && aRank !== bRank) return aRank - bRank;
+        return 0;
+    }
 
+    private matchesPreferredBrands(comercio: Comercio, preferredBrands: string[]): boolean {
+        return this.getPreferredBrandRank(comercio, preferredBrands) !== -1;
+    }
+
+    private getPreferredBrandRank(comercio: Comercio, preferredBrands: string[]): number {
         const normalizedName = this.normalize(this.getNombreComercio(comercio));
 
-        return preferredBrands.some(brand => {
+        return preferredBrands.findIndex(brand => {
             const normalizedBrand = this.normalize(brand);
             if (!normalizedBrand) return false;
             return normalizedName.includes(normalizedBrand);
@@ -426,11 +441,16 @@ export class ComercioService {
         a: Comercio,
         b: Comercio,
         query: string,
+        preferredBrands: string[],
         fallback: number
     ): number {
         const aScore = this.getNombreMatchScore(a, query);
         const bScore = this.getNombreMatchScore(b, query);
         if (aScore !== bScore) return bScore - aScore;
+
+        const preferredOrder = this.comparePreferredBrands(a, b, preferredBrands);
+        if (preferredOrder !== 0) return preferredOrder;
+
         if (aScore > 0) return fallback;
 
         const preferenceOrder = this.compareWithPreferencePriority(a, b, 0);
